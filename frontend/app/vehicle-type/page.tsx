@@ -77,7 +77,7 @@ export default function VehicleTypePage() {
 
   const handleContinue = () => {
     if (!selected) return;
-    router.push(`/dashboard?vehicle=${selected}`);
+    router.push(`/vehicle-brand?type=${selected}`);
   };
 
   return (

@@ -5,6 +5,7 @@ import morgan from "morgan";
 import "express-async-errors"; // auto-catches async errors → passes to errorHandler
 
 import authRoutes from "./routes/auth.routes";
+import brandRoutes from "./routes/brand.routes";
 import { errorHandler, notFound } from "./middleware/error.middleware";
 
 const app = express();
@@ -32,6 +33,7 @@ app.get("/api/health", (_req: Request, res: Response) => {
 
 // ─── Routes ──────────────────────────────────────────────────────
 app.use("/api/auth", authRoutes);
+app.use("/api/brands", brandRoutes);
 
 // ─── Error handling (must be last) ───────────────────────────────
 app.use(notFound as any);
