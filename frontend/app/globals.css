@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+/* Hard reset — Tailwind v4 does not include box-sizing by default */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; overflow-x: hidden; }
+
+/* Custom keyframes that Tailwind can't express */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  15%       { transform: translateX(-6px); }
+  30%       { transform: translateX(6px); }
+  45%       { transform: translateX(-4px); }
+  60%       { transform: translateX(4px); }
+  75%       { transform: translateX(-2px); }
+  90%       { transform: translateX(2px); }
+}
+
+.animate-spin-btn  { animation: spin  0.75s linear infinite; }
+.animate-shake     { animation: shake 0.45s ease-in-out; }
