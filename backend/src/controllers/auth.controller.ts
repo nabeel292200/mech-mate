@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import User from "../models/User.model";
+import Mechanic from "../models/Mechanic.model";
 import { signToken } from "../utils/jwt.utils";
 import { sendSuccess, sendError } from "../utils/response.utils";
 import { AuthenticatedRequest } from "../middleware/auth.middleware";
@@ -29,11 +30,18 @@ export const register = async (req: Request, res: Response): Promise<Response> =
     return sendError(res, "An account with this phone number already exists. Please login.", 400);
   }
 
+  // Pre-create mechanic document if role is mechanic
+  let mechanicDoc: any = null;
+  if (role === "mechanic") {
+    mechanicDoc = await Mechanic.create({});
+  }
+
   // Create user
   const user = await User.create({
     phone: cleanPhone,
     password,
     role,
+    mechanic: mechanicDoc ? mechanicDoc._id : null,
   });
 
   // Issue JWT
@@ -52,6 +60,8 @@ export const register = async (req: Request, res: Response): Promise<Response> =
         phone: user.phone,
         name: user.name,
         role: user.role,
+        isProfileComplete: user.isProfileComplete,
+        mechanic: mechanicDoc,
       },
     },
     "Account created successfully",
@@ -72,7 +82,7 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
   }
 
   // Find user and include password field explicitly
-  const user = await User.findOne({ phone: cleanPhone }).select("+password");
+  const user = await User.findOne({ phone: cleanPhone }).select("+password").populate("mechanic");
   if (!user) {
     return sendError(res, "Invalid phone number or password", 401);
   }
@@ -86,6 +96,14 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
   const isMatch = await user.comparePassword(password);
   if (!isMatch) {
     return sendError(res, "Invalid phone number or password", 401);
+  }
+
+  // Double check that mechanic document exists if role is mechanic
+  let mechanicDoc = user.mechanic;
+  if (user.role === "mechanic" && !mechanicDoc) {
+    mechanicDoc = await Mechanic.create({});
+    user.mechanic = mechanicDoc._id;
+    await User.updateOne({ _id: user._id }, { $set: { mechanic: mechanicDoc._id } });
   }
 
   // Issue JWT
@@ -104,6 +122,8 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
         phone: user.phone,
         name: user.name,
         role: user.role,
+        isProfileComplete: user.isProfileComplete,
+        mechanic: mechanicDoc,
       },
     },
     "Login successful"
@@ -145,17 +165,37 @@ export const updateProfile = async (req: AuthenticatedRequest, res: Response): P
     }
   }
 
+  let mechanicDoc = user.mechanic;
+
   if (user.role === "mechanic") {
-    if (experience !== undefined) user.mechanic.experience = Number(experience);
-    if (workshopAddress !== undefined) user.mechanic.workshopAddress = workshopAddress;
-    if (vehicleSkills !== undefined) user.mechanic.vehicleSkills = vehicleSkills;
-    if (brandExpertise !== undefined) user.mechanic.brandExpertise = brandExpertise;
-    if (liveLocation !== undefined) user.mechanic.liveLocation = !!liveLocation;
-    if (isAvailable !== undefined) user.mechanic.isAvailable = !!isAvailable;
+    // Ensure we have a valid mechanic document
+    if (!mechanicDoc || typeof mechanicDoc !== "object" || !("_id" in mechanicDoc)) {
+      if (user.mechanic) {
+        mechanicDoc = await Mechanic.findById(user.mechanic);
+      }
+      if (!mechanicDoc) {
+        mechanicDoc = await Mechanic.create({});
+      }
+    }
+
+    if (experience !== undefined) mechanicDoc.experience = Number(experience);
+    if (workshopAddress !== undefined) mechanicDoc.workshopAddress = workshopAddress;
+    if (vehicleSkills !== undefined) mechanicDoc.vehicleSkills = vehicleSkills;
+    if (brandExpertise !== undefined) mechanicDoc.brandExpertise = brandExpertise;
+    if (liveLocation !== undefined) mechanicDoc.liveLocation = !!liveLocation;
+    if (isAvailable !== undefined) mechanicDoc.isAvailable = !!isAvailable;
+
+    await mechanicDoc.save();
+    user.mechanic = mechanicDoc;
   }
 
   user.isProfileComplete = true;
+
+  // Temporarily set reference to ID before saving user doc
+  const tempPopulated = user.mechanic;
+  user.mechanic = mechanicDoc ? mechanicDoc._id : null;
   await user.save();
+  user.mechanic = tempPopulated;
 
   console.log(`[AUTH]  PROFILE_UPDATE  id=${user._id}  phone=${user.phone}`);
 

@@ -1,7 +1,7 @@
 {
   "name": "mech-mate-backend",
   "version": "1.0.0",
-  "description": "ASSIST – Mobile Workshop Assistance API",
+  "description": "MECH-MATE – Mobile Workshop Assistance API",
   "main": "dist/server.js",
   "scripts": {
     "build": "tsc",
@@ -18,7 +18,8 @@
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.4.0",
-    "morgan": "^1.10.0"
+    "morgan": "^1.10.0",
+    "socket.io": "^4.8.3"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

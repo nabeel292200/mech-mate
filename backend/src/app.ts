@@ -28,7 +28,7 @@ if (process.env.NODE_ENV !== "production") {
 
 // ─── Health check ────────────────────────────────────────────────
 app.get("/api/health", (_req: Request, res: Response) => {
-  res.json({ success: true, message: "ASSIST API is running", env: process.env.NODE_ENV });
+  res.json({ success: true, message: "MECH-MATE API is running", env: process.env.NODE_ENV });
 });
 
 // ─── Routes ──────────────────────────────────────────────────────

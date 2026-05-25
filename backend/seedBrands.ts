@@ -12,9 +12,10 @@ const seedBrands = async () => {
     await mongoose.connect(MONGO_URI);
     console.log("Connected.");
 
-    // Clear existing brands
-    await Brand.deleteMany({});
-    console.log("Cleared existing brands.");
+    // Drop the entire collection to clear out old unique indexes
+    await Brand.collection.drop().catch(() => console.log("Collection doesn't exist yet, proceeding..."));
+    await Brand.syncIndexes();
+    console.log("Cleared existing brands and refreshed indexes.");
 
     // Comprehensive list of car brands mapped to "car" category
     const carBrandNames = [
@@ -34,10 +35,46 @@ const seedBrands = async () => {
       logoUrl: name.slice(0, 2).toUpperCase(),
     }));
 
-    // Optionally add some bike/truck brands to be complete
-    brandsToInsert.push({ name: "Royal Enfield", category: "bike", logoUrl: "RE" });
-    brandsToInsert.push({ name: "Yamaha", category: "bike", logoUrl: "YA" });
-    brandsToInsert.push({ name: "Ashok Leyland", category: "truck", logoUrl: "AL" });
+    const bikeBrandNames = [
+      "Hero", "Bajaj", "TVS", "Royal Enfield", "Yamaha", "Honda",
+      "Kawasaki", "Suzuki", "KTM", "Ducati", "Harley-Davidson",
+      "Triumph", "Aprilia", "Benelli", "BMW Motorrad", "Husqvarna",
+      "MV Agusta", "Indian Motorcycle", "CFMoto", "Moto Guzzi"
+    ];
+
+    const bikeBrandsToInsert = bikeBrandNames.map(name => ({
+      name,
+      category: "bike",
+      logoUrl: name.slice(0, 2).toUpperCase(),
+    }));
+
+    const truckBrandNames = [
+      "Tata", "Ashok Leyland", "Mahindra", "Eicher", "BharatBenz",
+      "Volvo", "Scania", "MAN", "Mercedes-Benz", "DAF", "Kenworth",
+      "Peterbilt", "Freightliner", "Mack", "Isuzu", "Hino", "Fuso"
+    ];
+
+    const truckBrandsToInsert = truckBrandNames.map(name => ({
+      name,
+      category: "truck",
+      logoUrl: name.slice(0, 2).toUpperCase(),
+    }));
+
+    const busBrandNames = [
+      "Ashok Leyland", "Tata", "Eicher", "Volvo", "Scania",
+      "Mercedes-Benz", "MAN", "BYD", "Yutong", "King Long",
+      "Blue Bird", "Gillig", "Nova Bus", "Marcopolo"
+    ];
+
+    const busBrandsToInsert = busBrandNames.map(name => ({
+      name,
+      category: "bus",
+      logoUrl: name.slice(0, 2).toUpperCase(),
+    }));
+
+    brandsToInsert.push(...bikeBrandsToInsert);
+    brandsToInsert.push(...truckBrandsToInsert);
+    brandsToInsert.push(...busBrandsToInsert);
 
     await Brand.insertMany(brandsToInsert);
     console.log(`Successfully seeded ${brandsToInsert.length} brands into the database!`);

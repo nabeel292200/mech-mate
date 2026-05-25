@@ -1,17 +1,6 @@
 import mongoose, { Document, Schema } from "mongoose";
 import bcrypt from "bcryptjs";
 
-export interface IMechanic {
-  experience: number;
-  workshopAddress: string;
-  vehicleSkills: string[];
-  brandExpertise: string[];
-  isAvailable: boolean;
-  liveLocation: boolean;
-  rating: number;
-  totalJobs: number;
-}
-
 export interface IUser extends Document {
   phone: string;
   password?: string;
@@ -19,7 +8,7 @@ export interface IUser extends Document {
   name: string;
   isProfileComplete: boolean;
   isActive: boolean;
-  mechanic: IMechanic;
+  mechanic?: any;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidate: string): Promise<boolean>;
@@ -58,14 +47,9 @@ const userSchema = new Schema<IUser>(
       default: true,
     },
     mechanic: {
-      experience: { type: Number, default: 0 },
-      workshopAddress: { type: String, default: "" },
-      vehicleSkills: { type: [String], default: [] },
-      brandExpertise: { type: [String], default: [] },
-      isAvailable: { type: Boolean, default: false },
-      liveLocation: { type: Boolean, default: true },
-      rating: { type: Number, default: 0 },
-      totalJobs: { type: Number, default: 0 },
+      type: Schema.Types.ObjectId,
+      ref: "Mechanic",
+      default: null,
     },
   },
   { timestamps: true }

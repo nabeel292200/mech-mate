@@ -21,7 +21,7 @@ export const protect = async (req: AuthenticatedRequest, res: Response, next: Ne
     const token = authHeader.split(" ")[1];
     const decoded = verifyToken(token);
 
-    const user = await User.findById(decoded.id).select("-__v");
+    const user = await User.findById(decoded.id).select("-__v").populate("mechanic");
     if (!user) {
       return sendError(res, "User belonging to this token no longer exists", 401);
     }
