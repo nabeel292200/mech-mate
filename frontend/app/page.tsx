@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 const CONTAINER = "mx-auto w-full px-6" as const;
 const MAX_W = { maxWidth: 1100 } as const;
@@ -14,21 +15,25 @@ export default function Home() {
 
       {/* ===== NAVBAR ===== */}
       <header style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, background: "#fff", borderBottom: "1px solid #f3f4f6", boxShadow: "0 1px 8px rgba(0,0,0,0.06)", height: 64 }}>
-        <div className={CONTAINER} style={{ ...MAX_W, height: "100%", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <a href="#" style={{ fontSize: 22, fontWeight: 900, letterSpacing: "-0.04em", color: "#b91c1c", textDecoration: "none" }}>ASSIST</a>
+        <div className={CONTAINER} style={{ ...MAX_W, margin: "0 auto", height: "100%", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <Link href="/" style={{ fontSize: 22, fontWeight: 900, letterSpacing: "-0.04em", color: "#b91c1c", textDecoration: "none" }}>MECH-MATE</Link>
           <nav>
             <ul style={{ display: "flex", alignItems: "center", gap: 32, listStyle: "none", margin: 0, padding: 0 }}>
-              {["Home", "Services", "About", "Contact"].map((item) => (
-                <li key={item}>
-                  <a href="#" style={{ textDecoration: "none", fontSize: 14, fontWeight: 500, color: "#374151" }}
+              {[
+                { name: "How it works", href: "/how-it-works" },
+                { name: "Contact", href: "/contact" },
+              ].map((item) => (
+                <li key={item.name}>
+                  <Link href={item.href} style={{ textDecoration: "none", fontSize: 14, fontWeight: 500, color: "#374151" }}
                     onMouseEnter={(e) => (e.currentTarget.style.color = "#b91c1c")}
                     onMouseLeave={(e) => (e.currentTarget.style.color = "#374151")}
-                  >{item}</a>
+                  >{item.name}</Link>
                 </li>
               ))}
             </ul>
           </nav>
           <button
+            onClick={() => router.push("/login")}
             className="bg-red-700 hover:bg-red-800 text-white rounded-lg border-none cursor-pointer active:scale-95 transition-all duration-200"
             style={{ padding: "10px 22px", fontSize: 13, fontWeight: 700, letterSpacing: "0.03em" }}
           >Sign In</button>
@@ -41,7 +46,7 @@ export default function Home() {
         <section style={{ position: "relative", height: 520, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
           <img
             style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center" }}
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuD0VtT3GFdpw_4XUgDiRvYxcaDfJIZhCHXBBrTUlm0aP8imd8vpRFLITk9D6S5y5n9rY6ydta0f0XbcIru94IRSL_l0LybI-5G3ZUKWebJ9L00BRiX2iPxePo079McXCDTxK8uuF2tMDl_yasC1x82MGvCeOpx1_AARCEpVLkkr5OvGoL9FKGccBalB_XiFr5ZLk2kay2z7TqSDw9_IJ5nJ8TIxSbE9R77y5CTdlT_4rFzpc88DgeWePTmlYxliJR6ehWDUUTqkFLg"
+            src="/hero-bg.jpg"
             alt="Car on road – hero background"
           />
           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.55), rgba(0,0,0,0.65), rgba(0,0,0,0.75))" }} />
@@ -73,7 +78,7 @@ export default function Home() {
 
         {/* ===== FEATURES ===== */}
         <section style={{ background: "#fff", padding: "64px 0" }}>
-          <div className={CONTAINER} style={MAX_W}>
+          <div className={CONTAINER} style={{ ...MAX_W, margin: "0 auto" }}>
             <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase", color: "#b91c1c", marginBottom: 8 }}>Our Ecosystem</p>
             <h2 style={{ fontSize: 30, fontWeight: 800, color: "#111827", letterSpacing: "-0.02em", lineHeight: 1.2, marginBottom: 40 }}>Precision Engineering for Peace of Mind</h2>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 20 }}>
@@ -100,7 +105,7 @@ export default function Home() {
 
         {/* ===== SERVICE CATEGORIES ===== */}
         <section style={{ background: "#f9fafb", padding: "64px 0" }}>
-          <div className={CONTAINER} style={MAX_W}>
+          <div className={CONTAINER} style={{ ...MAX_W, margin: "0 auto" }}>
             <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase", color: "#b91c1c", marginBottom: 8 }}>Rapid Response Utility</p>
             <h2 style={{ fontSize: 30, fontWeight: 800, color: "#111827", letterSpacing: "-0.02em", lineHeight: 1.2, marginBottom: 40 }}>Service Categories</h2>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 18 }}>
@@ -139,11 +144,11 @@ export default function Home() {
 
         {/* ===== CTA BANNER ===== */}
         <section style={{ background: "#fff", padding: "64px 0" }}>
-          <div className={CONTAINER} style={MAX_W}>
+          <div className={CONTAINER} style={{ ...MAX_W, margin: "0 auto" }}>
             <div style={{ background: "linear-gradient(135deg, #b91c1c 0%, #991b1b 100%)", borderRadius: 20, padding: "56px 40px", textAlign: "center", color: "#fff", boxShadow: "0 12px 40px rgba(185,28,28,0.3)" }}>
               <h2 style={{ fontSize: 32, fontWeight: 800, marginBottom: 14 }}>Stranded on the road?</h2>
               <p style={{ fontSize: 15, color: "rgba(255,255,255,0.82)", marginBottom: 32, maxWidth: 480, marginLeft: "auto", marginRight: "auto", lineHeight: 1.6 }}>
-                Don&apos;t let a breakdown ruin your day. Join thousands of users who trust ASSIST for reliable roadside repairs.
+                Don&apos;t let a breakdown ruin your day. Join thousands of users who trust MECH-MATE for reliable roadside repairs.
               </p>
               <button
                 className="active:scale-95 transition-all duration-200"
@@ -159,10 +164,10 @@ export default function Home() {
 
       {/* ===== FOOTER ===== */}
       <footer style={{ background: "#1a1a1a", paddingTop: 56, paddingBottom: 24 }}>
-        <div className={CONTAINER} style={MAX_W}>
+        <div className={CONTAINER} style={{ ...MAX_W, margin: "0 auto" }}>
           <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr 1.5fr", gap: 40, marginBottom: 40 }}>
             <div>
-              <span style={{ fontSize: 20, fontWeight: 900, letterSpacing: "-0.04em", color: "#b91c1c", display: "block", marginBottom: 14 }}>ASSIST</span>
+              <span style={{ fontSize: 20, fontWeight: 900, letterSpacing: "-0.04em", color: "#b91c1c", display: "block", marginBottom: 14 }}>MECH-MATE</span>
               <p style={{ fontSize: 13, lineHeight: 1.65, color: "#6b7280", maxWidth: 220 }}>Revolutionizing roadside assistance through high-precision technology and elite technician networks.</p>
             </div>
             {[
@@ -192,7 +197,7 @@ export default function Home() {
             </div>
           </div>
           <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 20, textAlign: "center", fontSize: 12, color: "rgba(255,255,255,0.3)" }}>
-            © 2024 ASSIST Mobile Workshop Assistance System. All rights reserved.
+            © 2024 MECH-MATE Mobile Workshop Assistance System. All rights reserved.
           </div>
         </div>
       </footer>

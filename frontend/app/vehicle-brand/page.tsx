@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "../../src/services/api.service";
 
@@ -11,7 +11,120 @@ interface BrandData {
   logoUrl: string;
 }
 
-export default function VehicleBrandPage() {
+const getBrandLogo = (brandName: string) => {
+  const name = brandName.toLowerCase();
+  const logos: Record<string, string> = {
+    // Cars
+    "toyota": "https://img.icons8.com/color/96/toyota.png",
+    "honda": "https://img.icons8.com/color/96/honda.png",
+    "nissan": "https://img.icons8.com/color/96/nissan.png",
+    "suzuki": "https://img.icons8.com/color/96/suzuki.png",
+    "mazda": "https://img.icons8.com/color/96/mazda.png",
+    "mitsubishi": "https://img.icons8.com/color/96/mitsubishi.png",
+    "hyundai": "https://img.icons8.com/color/96/hyundai.png",
+    "kia": "https://img.icons8.com/color/96/kia-motors.png",
+    "bmw": "https://img.icons8.com/color/96/bmw.png",
+    "bmw motorrad": "https://img.icons8.com/color/96/bmw.png",
+    "mercedes-benz": "https://img.icons8.com/color/96/mercedes-benz.png",
+    "audi": "https://img.icons8.com/color/96/audi.png",
+    "volkswagen": "https://img.icons8.com/color/96/volkswagen.png",
+    "porsche": "https://img.icons8.com/color/96/porsche.png",
+    "ferrari": "https://img.icons8.com/color/96/ferrari.png",
+    "lamborghini": "https://img.icons8.com/color/96/lamborghini.png",
+    "volvo": "https://img.icons8.com/color/96/volvo.png",
+    "jaguar": "https://img.icons8.com/color/96/jaguar.png",
+    "land rover": "https://img.icons8.com/color/96/land-rover.png",
+    "ford": "https://img.icons8.com/color/96/ford.png",
+    "chevrolet": "https://img.icons8.com/color/96/chevrolet.png",
+    "tesla": "https://img.icons8.com/color/96/tesla.png",
+    "jeep": "https://img.icons8.com/color/96/jeep.png",
+    "dodge": "https://img.icons8.com/color/96/dodge.png",
+    "gmc": "https://img.icons8.com/color/96/gmc.png",
+    "cadillac": "https://img.icons8.com/color/96/cadillac.png",
+    "chrysler": "https://img.icons8.com/color/96/chrysler.png",
+    "subaru": "https://img.icons8.com/color/96/subaru.png",
+    "lexus": "https://img.icons8.com/color/96/lexus.png",
+    "infiniti": "https://img.icons8.com/color/96/infiniti.png",
+    "acura": "https://img.icons8.com/color/96/acura.png",
+    "bentley": "https://img.icons8.com/color/96/bentley.png",
+    "rolls-royce": "https://img.icons8.com/color/96/rolls-royce.png",
+    "aston martin": "https://img.icons8.com/color/96/aston-martin.png",
+    "bugatti": "https://img.icons8.com/color/96/bugatti.png",
+    "maserati": "https://img.icons8.com/color/96/maserati.png",
+    "renault": "https://img.icons8.com/color/96/renault.png",
+    "peugeot": "https://img.icons8.com/color/96/peugeot.png",
+    "citroen": "https://img.icons8.com/color/96/citroen.png",
+    "tata": "https://img.icons8.com/color/96/tata.png",
+    "mahindra": "https://img.icons8.com/color/96/mahindra.png",
+    "maruti suzuki": "https://img.icons8.com/color/96/suzuki.png",
+
+    // Bikes
+    "hero": "https://www.google.com/s2/favicons?domain=heromotocorp.com&sz=128",
+    "bajaj": "https://www.google.com/s2/favicons?domain=bajajauto.com&sz=128",
+    "tvs": "https://www.google.com/s2/favicons?domain=tvsmotor.com&sz=128",
+    "royal enfield": "https://www.google.com/s2/favicons?domain=royalenfield.com&sz=128",
+    "yamaha": "https://www.google.com/s2/favicons?domain=yamaha-motor.com&sz=128",
+    "kawasaki": "https://www.google.com/s2/favicons?domain=kawasaki.com&sz=128",
+    "ktm": "https://www.google.com/s2/favicons?domain=ktm.com&sz=128",
+    "ducati": "https://www.google.com/s2/favicons?domain=ducati.com&sz=128",
+    "harley-davidson": "https://www.google.com/s2/favicons?domain=harley-davidson.com&sz=128",
+    "triumph": "https://www.google.com/s2/favicons?domain=triumphmotorcycles.com&sz=128",
+    "aprilia": "https://www.google.com/s2/favicons?domain=aprilia.com&sz=128",
+    "benelli": "https://www.google.com/s2/favicons?domain=benelli.com&sz=128",
+    "husqvarna": "https://www.google.com/s2/favicons?domain=husqvarna-motorcycles.com&sz=128",
+    "mv agusta": "https://www.google.com/s2/favicons?domain=mvagusta.com&sz=128",
+    "indian": "https://www.google.com/s2/favicons?domain=indianmotorcycle.com&sz=128",
+    "indian motorcycle": "https://www.google.com/s2/favicons?domain=indianmotorcycle.com&sz=128",
+    "cfmoto": "https://www.google.com/s2/favicons?domain=cfmoto.com&sz=128",
+    "moto guzzi": "https://www.google.com/s2/favicons?domain=motoguzzi.com&sz=128",
+
+    // Trucks / Buses
+    "ashok leyland": "https://www.google.com/s2/favicons?domain=ashokleyland.com&sz=128",
+    "eicher": "https://www.google.com/s2/favicons?domain=eichermotors.com&sz=128",
+    "scania": "https://www.google.com/s2/favicons?domain=scania.com&sz=128",
+    "man": "https://www.google.com/s2/favicons?domain=man.eu&sz=128",
+    "daf": "https://www.google.com/s2/favicons?domain=daf.com&sz=128",
+    "kenworth": "https://www.google.com/s2/favicons?domain=kenworth.com&sz=128",
+    "peterbilt": "https://www.google.com/s2/favicons?domain=peterbilt.com&sz=128",
+    "freightliner": "https://www.google.com/s2/favicons?domain=freightliner.com&sz=128",
+    "mack": "https://www.google.com/s2/favicons?domain=macktrucks.com&sz=128",
+    "isuzu": "https://www.google.com/s2/favicons?domain=isuzu.com&sz=128",
+    "hino": "https://www.google.com/s2/favicons?domain=hino.com&sz=128",
+    "fuso": "https://www.google.com/s2/favicons?domain=mitsubishi-fuso.com&sz=128"
+  };
+
+  if (logos[name]) return logos[name];
+  for (const key of Object.keys(logos)) {
+    if (name.includes(key) || key.includes(name)) {
+      return logos[key];
+    }
+  }
+  return null;
+};
+
+function BrandLogo({ brandName, defaultInitials, isSelected, imgFailed, setImgFailed }: { brandName: string; defaultInitials: string; isSelected: boolean; imgFailed: boolean; setImgFailed: React.Dispatch<React.SetStateAction<boolean>> }) {
+  const logoUrl = getBrandLogo(brandName);
+
+  if (logoUrl && !imgFailed) {
+    return (
+      <img
+        src={logoUrl}
+        alt={`${brandName} logo`}
+        onError={() => setImgFailed(true)}
+        style={{
+          width: "70%",
+          height: "70%",
+          objectFit: "contain",
+          filter: isSelected ? "brightness(0) invert(1)" : "none"
+        }}
+      />
+    );
+  }
+
+  return <>{defaultInitials}</>;
+}
+
+function VehicleBrandContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const vehicleType = searchParams.get("type") || "car";
@@ -20,6 +133,9 @@ export default function VehicleBrandPage() {
   const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
   const [dbBrands, setDbBrands] = useState<BrandData[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Keep track of which image loads failed so we fallback instantly
+  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
 
   // Fetch brands from database
   useEffect(() => {
@@ -80,7 +196,7 @@ export default function VehicleBrandPage() {
     <div style={s.root}>
       {/* Header */}
       <header style={s.header}>
-        <a href="/" style={s.logo}>ASSIST</a>
+        <a href="/" style={s.logo}>MECH-MATE</a>
       </header>
 
       {/* Main Content */}
@@ -111,6 +227,7 @@ export default function VehicleBrandPage() {
           ) : (
             filteredBrands.map((brand) => {
               const isSelected = selectedBrand === brand.name;
+              const hasLogoImage = getBrandLogo(brand.name) && !failedImages[brand.name];
               return (
                 <div
                   key={brand._id}
@@ -129,8 +246,18 @@ export default function VehicleBrandPage() {
                     }
                   }}
                 >
-                  <div style={{ ...s.logoCircle, ...(isSelected ? s.logoCircleSelected : {}) }}>
-                    {brand.logoUrl}
+                  <div style={{ 
+                    ...s.logoCircle, 
+                    ...(isSelected ? s.logoCircleSelected : {}),
+                    ...(isSelected && hasLogoImage ? { background: "#fee2e2", color: "#b91c1c" } : {})
+                  }}>
+                    <BrandLogo 
+                      brandName={brand.name} 
+                      defaultInitials={brand.logoUrl} 
+                      isSelected={isSelected} 
+                      imgFailed={!!failedImages[brand.name]}
+                      setImgFailed={(val) => setFailedImages(prev => ({ ...prev, [brand.name]: typeof val === 'function' ? val(!!prev[brand.name]) : val }))}
+                    />
                   </div>
                   <span style={s.brandName}>{brand.name}</span>
                 </div>
@@ -157,5 +284,17 @@ export default function VehicleBrandPage() {
       </main>
 
     </div>
+  );
+}
+
+export default function VehicleBrandPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ minHeight: "100vh", background: "#f8f9fa", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <p style={{ color: "#6b7280", fontStyle: "italic" }}>Loading...</p>
+      </div>
+    }>
+      <VehicleBrandContent />
+    </Suspense>
   );
 }

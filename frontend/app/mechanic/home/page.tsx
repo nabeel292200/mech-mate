@@ -1,12 +1,15 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuthStore } from "../../../src/store/authStore";
+import { getSocket } from "../../../src/services/socket";
 
 const NAV = [
-  { icon: "dashboard",      label: "Dashboard",        active: true  },
-  { icon: "assignment",     label: "Active Requests",   active: false },
-  { icon: "task_alt",       label: "Completed Jobs",    active: false },
-  { icon: "payments",       label: "Earnings",          active: false },
-  { icon: "person",         label: "Profile",           active: false },
+  { icon: "dashboard", label: "Dashboard", active: true },
+  { icon: "assignment", label: "Active Requests", active: false },
+  { icon: "task_alt", label: "Completed Jobs", active: false },
+  { icon: "payments", label: "Earnings", active: false },
+  { icon: "person", label: "Profile", active: false },
 ];
 
 const REQUESTS = [
@@ -31,10 +34,74 @@ const REQUESTS = [
 ];
 
 export default function MechanicHome() {
-  const [dismissed, setDismissed] = useState<number[]>([]);
-  const [accepted, setAccepted] = useState<number[]>([]);
+  const router = useRouter();
+  const { user, loading, logout } = useAuthStore();
+  const [dismissed, setDismissed] = useState<string[]>([]);
+  const [accepted, setAccepted] = useState<string[]>([]);
+  const [requests, setRequests] = useState<any[]>([]);
 
-  const visible = REQUESTS.filter((r) => !dismissed.includes(r.id));
+  useEffect(() => {
+    const socket = getSocket();
+    
+    if (user && user.role === "mechanic" && user.mechanic) {
+      const mechanicId = typeof user.mechanic === "string" ? user.mechanic : (user.mechanic._id || user.mechanic.id);
+      if (mechanicId) {
+        socket.emit("register_mechanic", { mechanicId });
+      }
+    }
+    
+    socket.on("new_request", (req: any) => {
+      // Map DB request to UI request format
+      const mappedReq = {
+        id: req._id,
+        priority: "URGENT",
+        name: "New Customer",
+        km: "2.5",
+        car: req.brandName,
+        problem: req.problemDetails,
+        img: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&auto=format&fit=crop&q=70",
+      };
+      setRequests((prev) => [...prev, mappedReq]);
+    });
+
+    socket.on("request_accepted", (updatedReq: any) => {
+      if (user && updatedReq.mechanicId === user._id) {
+        router.push(`/live-tracking/${updatedReq._id}?role=mechanic`);
+      }
+    });
+
+    return () => {
+      socket.off("new_request");
+      socket.off("request_accepted");
+    };
+  }, [user, router]);
+
+  useEffect(() => {
+    if (!loading) {
+      if (!user) {
+        router.push("/login?role=mechanic");
+      } else if (user.role !== "mechanic") {
+        router.push("/login?role=mechanic");
+      } else if (!user.isProfileComplete) {
+        router.push("/mechanic/dashboard");
+      }
+    }
+  }, [user, loading, router]);
+
+  if (loading || !user || !user.isProfileComplete) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: "#f5f6fa" }}>
+        <span style={{ width: 36, height: 36, border: "3px solid #e5e7eb", borderTopColor: "#b91c1c", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
+        <style jsx global>{`
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  const visible = requests.filter((r) => !dismissed.includes(r.id));
 
   return (
     <div style={{ display: "flex", height: "100vh", fontFamily: "'Inter','Geist Sans',Arial,sans-serif", background: "#f5f6fa", overflow: "hidden" }}>
@@ -42,11 +109,16 @@ export default function MechanicHome() {
       {/* ===== SIDEBAR ===== */}
       <aside style={{ width: 220, background: "#fff", borderRight: "1px solid #f0f0f0", display: "flex", flexDirection: "column", flexShrink: 0, height: "100vh", position: "sticky", top: 0 }}>
         <div style={{ padding: "22px 20px 18px" }}>
-          <a href="/" style={{ fontSize: 22, fontWeight: 900, color: "#b91c1c", letterSpacing: "-0.04em", textDecoration: "none" }}>ASSIST</a>
+          <a href="/" style={{ fontSize: 22, fontWeight: 900, color: "#b91c1c", letterSpacing: "-0.04em", textDecoration: "none" }}>MECH-MATE</a>
         </div>
         <nav style={{ flex: 1, padding: "4px 12px" }}>
           {NAV.map(({ icon, label, active }) => (
             <div key={label} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 12px", borderRadius: 10, marginBottom: 2, background: active ? "#b91c1c" : "transparent", cursor: "pointer", transition: "background 0.15s" }}
+              onClick={() => {
+                if (label === "Profile") {
+                  router.push("/mechanic/dashboard");
+                }
+              }}
               onMouseEnter={(e) => { if (!active) (e.currentTarget as HTMLElement).style.background = "#f9fafb"; }}
               onMouseLeave={(e) => { if (!active) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
             >
@@ -59,6 +131,11 @@ export default function MechanicHome() {
         <div style={{ padding: "12px 12px 20px", borderTop: "1px solid #f3f4f6" }}>
           {[{ icon: "settings", label: "Settings" }, { icon: "logout", label: "Logout" }].map(({ icon, label }) => (
             <div key={label} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 10, cursor: "pointer", marginBottom: 2 }}
+              onClick={() => {
+                if (label === "Logout") {
+                  logout();
+                }
+              }}
               onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "#f9fafb"; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
             >
@@ -75,11 +152,11 @@ export default function MechanicHome() {
         {/* Top bar */}
         <header style={{ background: "#fff", borderBottom: "1px solid #f0f0f0", padding: "14px 28px", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 12, flexShrink: 0 }}>
           <div style={{ textAlign: "right" }}>
-            <p style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>Alex Smith</p>
-            <p style={{ fontSize: 12, color: "#9ca3af" }}>Certified Mechanic</p>
+            <p style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>{user?.name || "Alex Smith"}</p>
+            <p style={{ fontSize: 12, color: "#9ca3af" }}>{user?.mechanic?.experience ? `${user.mechanic.experience} Years Exp.` : "Certified Mechanic"}</p>
           </div>
           <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#f3f4f6", overflow: "hidden", border: "2px solid #e5e7eb" }}>
-            <img src="https://i.pravatar.cc/80?img=12" alt="Alex Smith" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            <img src="https://i.pravatar.cc/80?img=12" alt={user?.name || "avatar"} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           </div>
         </header>
 
@@ -122,7 +199,7 @@ export default function MechanicHome() {
                         <p style={{ fontSize: 17, fontWeight: 800, color: "#111827", lineHeight: 1.2 }}>{req.name}</p>
                         <div style={{ textAlign: "right", flexShrink: 0 }}>
                           <span style={{ fontSize: 22, fontWeight: 900, color: "#b91c1c", lineHeight: 1 }}>{req.km}</span>
-                          <p style={{ fontSize: 11, color: "#9ca3af", lineHeight: 1.3 }}>km<br/>Away</p>
+                          <p style={{ fontSize: 11, color: "#9ca3af", lineHeight: 1.3 }}>km<br />Away</p>
                         </div>
                       </div>
 
@@ -139,12 +216,18 @@ export default function MechanicHome() {
 
                       {/* Buttons */}
                       {isAccepted ? (
-                        <div style={{ textAlign: "center", padding: "8px 0", fontSize: 13, fontWeight: 700, color: "#16a34a" }}>
-                          ✓ Request Accepted
+                        <div
+                          onClick={() => router.push(`/live-tracking/${req.id}?role=mechanic`)}
+                          style={{ textAlign: "center", padding: "10px 0", fontSize: 13, fontWeight: 700, color: "#16a34a", cursor: "pointer", border: "1.5px dashed #16a34a", borderRadius: 8, background: "#f0fdf4" }}>
+                          ✓ Request Accepted (Click to Track)
                         </div>
                       ) : (
                         <div style={{ display: "flex", gap: 8 }}>
-                          <button onClick={() => setAccepted((p) => [...p, req.id])}
+                          <button onClick={() => {
+                            setAccepted((p) => [...p, req.id]);
+                            const socket = getSocket();
+                            socket.emit("accept_request", { requestId: req.id, mechanicId: user?._id });
+                          }}
                             style={{ flex: 1, background: "#b91c1c", color: "#fff", border: "none", borderRadius: 8, padding: "11px 0", fontSize: 13, fontWeight: 700, cursor: "pointer", transition: "background 0.15s" }}
                             onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "#991b1b"; }}
                             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "#b91c1c"; }}
@@ -167,9 +250,9 @@ export default function MechanicHome() {
           <h2 style={{ fontSize: 20, fontWeight: 800, color: "#111827", letterSpacing: "-0.02em", marginBottom: 16 }}>Shift Overview</h2>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
             {[
-              { icon: "timer",           value: "4h 22m",  label: "ACTIVE SHIFT",     color: "#f97316" },
-              { icon: "attach_money",    value: "$284.50", label: "TODAY'S EARNINGS",  color: "#16a34a" },
-              { icon: "task_alt",        value: "6",       label: "JOBS COMPLETED",    color: "#2563eb" },
+              { icon: "timer", value: "4h 22m", label: "ACTIVE SHIFT", color: "#f97316" },
+              { icon: "attach_money", value: "$284.50", label: "TODAY'S EARNINGS", color: "#16a34a" },
+              { icon: "task_alt", value: "6", label: "JOBS COMPLETED", color: "#2563eb" },
             ].map(({ icon, value, label, color }) => (
               <div key={label} style={{ background: "#fff", borderRadius: 14, padding: "22px 20px", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
                 <span className="material-symbols-outlined" style={{ fontSize: 28, color, display: "block", marginBottom: 10 }}>{icon}</span>

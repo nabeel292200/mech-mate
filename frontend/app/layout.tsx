@@ -3,7 +3,7 @@ import "./globals.css";
 import { AuthInitializer } from "../src/components/common/AuthInitializer";
 
 export const metadata: Metadata = {
-  title: "ASSIST – Mobile Workshop Assistance System",
+  title: "MECH-MATE – Mobile Workshop Assistance System",
   description:
     "Get instant roadside mechanic assistance anytime, anywhere. Your reliable partner in automotive distress.",
 };

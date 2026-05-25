@@ -86,7 +86,7 @@ export default function VehicleTypePage() {
       {/* ===== TOP BAR ===== */}
       <header style={{ borderBottom: "1px solid #f3f4f6", padding: "0 24px", height: 56, display: "flex", alignItems: "center" }}>
         <a href="/" style={{ fontSize: 20, fontWeight: 900, letterSpacing: "-0.04em", color: "#b91c1c", textDecoration: "none" }}>
-          ASSIST
+          MECH-MATE
         </a>
       </header>
 

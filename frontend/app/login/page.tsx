@@ -17,6 +17,8 @@ function LoginContent() {
   const [shake, setShake] = useState(false);
   const [error, setError] = useState("");
 
+
+
   const triggerShake = () => {
     setShake(true);
     setTimeout(() => setShake(false), 500);
@@ -50,7 +52,11 @@ function LoginContent() {
 
       // Routing logic based on authenticated role
       if (authData.role === "mechanic") {
-        router.push("/mechanic/home");
+        if (!authData.isProfileComplete) {
+          router.push("/mechanic/dashboard");
+        } else {
+          router.push("/mechanic/home");
+        }
       } else {
         router.push("/vehicle-type");
       }
@@ -67,7 +73,7 @@ function LoginContent() {
       {/* ===== LEFT PANEL ===== */}
       <div className="relative hidden md:block" style={{ flex: "1.2", minWidth: 0 }}>
         <a href="/" className="absolute top-7 left-8 z-10 text-[22px] font-black tracking-tight text-red-700 no-underline">
-          ASSIST
+          MECH-MATE
         </a>
         <img
           src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=900&auto=format&fit=crop&q=80"
@@ -98,18 +104,42 @@ function LoginContent() {
             style={{ padding: "32px 28px" }}
           >
             {/* Toggle Tabs */}
-            <div className="flex bg-gray-100 rounded-xl p-1 mb-6">
+            <div style={{ display: "flex", background: "#f3f4f6", borderRadius: 12, padding: 4, marginBottom: 24 }}>
               <button
                 type="button"
                 onClick={() => { setMode("login"); setError(""); }}
-                className={`flex-1 py-2 text-[14px] font-bold rounded-lg transition-all border-none cursor-pointer ${mode === "login" ? "bg-white text-gray-900 shadow-sm" : "bg-transparent text-gray-400"}`}
+                style={{
+                  flex: 1,
+                  padding: "10px 0",
+                  fontSize: 14,
+                  fontWeight: "bold",
+                  borderRadius: 8,
+                  border: "none",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                  background: mode === "login" ? "#fff" : "transparent",
+                  color: mode === "login" ? "#111827" : "#9ca3af",
+                  boxShadow: mode === "login" ? "0 1px 3px rgba(0,0,0,0.1)" : "none"
+                }}
               >
                 Sign In
               </button>
               <button
                 type="button"
                 onClick={() => { setMode("register"); setError(""); }}
-                className={`flex-1 py-2 text-[14px] font-bold rounded-lg transition-all border-none cursor-pointer ${mode === "register" ? "bg-white text-gray-900 shadow-sm" : "bg-transparent text-gray-400"}`}
+                style={{
+                  flex: 1,
+                  padding: "10px 0",
+                  fontSize: 14,
+                  fontWeight: "bold",
+                  borderRadius: 8,
+                  border: "none",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                  background: mode === "register" ? "#fff" : "transparent",
+                  color: mode === "register" ? "#111827" : "#9ca3af",
+                  boxShadow: mode === "register" ? "0 1px 3px rgba(0,0,0,0.1)" : "none"
+                }}
               >
                 Register
               </button>
@@ -120,7 +150,7 @@ function LoginContent() {
             </h1>
             <p className="text-[14px] text-gray-400 leading-relaxed mb-6">
               {role === "mechanic"
-                ? `Authenticate as an ASSIST Mechanic.`
+                ? `Authenticate as a MECH-MATE Mechanic.`
                 : `Authenticate to access rapid roadside workshops.`}
             </p>
 
@@ -190,6 +220,20 @@ function LoginContent() {
                 )}
               </button>
             </form>
+
+            <div style={{ marginTop: 24, borderTop: "1px solid #f3f4f6", paddingTop: 16, textAlign: "center" }}>
+              <p style={{ fontSize: 13, color: "#6b7280", margin: 0, lineHeight: 1.6 }}>
+                Need an administrator account?{" "}
+                <button
+                  type="button"
+                  onClick={() => router.push("/admin/login")}
+                  style={{ color: "#b91c1c", fontWeight: 700, textDecoration: "none", background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 13 }}
+                  onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
+                  onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}>
+                  Request <br /> Admin Access
+                </button>
+              </p>
+            </div>
           </div>
 
           {/* Policy footer */}
