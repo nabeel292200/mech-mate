@@ -3,11 +3,13 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getSocket } from "@/src/services/socket";
+import { useAuthStore } from "@/src/store/authStore";
 
 const BRANDS = ["Toyota", "Honda", "BMW", "Audi", "Ford", "Chevrolet", "Bajaj", "Hero", "Yamaha", "KTM", "Royal Enfield", "Ducati", "Aprilia"];
 
 export default function RequestServicePage() {
   const router = useRouter();
+  const { user } = useAuthStore();
   const [brand, setBrand] = useState("");
   const [problem, setProblem] = useState("");
   const [status, setStatus] = useState<"idle" | "locating" | "waiting" | "accepted">("idle");
@@ -52,8 +54,13 @@ export default function RequestServicePage() {
     setError("");
     setStatus("locating");
 
-    // Mock userId for now, replace with actual auth token user ID in production
-    const mockUserId = "60d0fe4f5311236168a109ca"; 
+    if (!user) {
+      setError("Please log in to request assistance.");
+      router.push("/login?role=user");
+      return;
+    }
+
+    const actualUserId = user._id || user.id;
 
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -65,7 +72,7 @@ export default function RequestServicePage() {
 
           const socket = getSocket();
           socket.emit("create_request", {
-            userId: mockUserId,
+            userId: actualUserId,
             brandName: brand,
             problemDetails: problem,
             userLocation,

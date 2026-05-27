@@ -41,6 +41,8 @@ export const initSocket = (httpServer: HttpServer) => {
           status: "pending"
         });
 
+        await newReq.populate("userId", "name phone avatar");
+
         let mechanicsNotified = 0;
 
         for (const [socketId, mechanicInfo] of connectedMechanics.entries()) {
@@ -80,12 +82,30 @@ export const initSocket = (httpServer: HttpServer) => {
       }
     });
 
+    socket.on("reject_request", async (data: { requestId: string, mechanicId: string }) => {
+      try {
+        const ServiceRequest = require("./models/ServiceRequest.model").default;
+        await ServiceRequest.findByIdAndUpdate(
+          data.requestId,
+          { status: "cancelled" },
+          { new: true }
+        );
+        io.emit("request_rejected", { requestId: data.requestId });
+      } catch (error: any) {
+        console.error("Error rejecting request:", error);
+      }
+    });
+
     socket.on("location_update", (data: { requestId: string, role: string, location: any }) => {
       io.emit("location_update", data);
     });
 
     socket.on("mechanic_arrived", (data: { requestId: string }) => {
       io.emit("mechanic_arrived", data);
+    });
+
+    socket.on("send_invoice", (data: { requestId: string }) => {
+      io.emit("invoice_received", data);
     });
 
     socket.on("disconnect", () => {

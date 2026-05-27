@@ -50,6 +50,18 @@ function LoginContent() {
         authData = await register(cleanPhone, password, role);
       }
 
+      // ---- Role mismatch guard ----
+      if (role === "mechanic" && authData.role !== "mechanic") {
+        setError("This account is not registered as a mechanic. Please use the customer login.");
+        triggerShake();
+        return;
+      }
+      if (role === "user" && authData.role !== "user") {
+        setError("This account is registered as a mechanic. Please use the mechanic login.");
+        triggerShake();
+        return;
+      }
+
       // Routing logic based on authenticated role
       if (authData.role === "mechanic") {
         if (!authData.isProfileComplete) {

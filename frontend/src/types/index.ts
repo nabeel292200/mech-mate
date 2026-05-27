@@ -1,10 +1,13 @@
 export interface IUser {
+  _id?: string;
   id: string;
   phone: string;
   name: string;
   role: "user" | "mechanic";
   isProfileComplete: boolean;
   mechanic?: {
+    _id?: string;
+    id?: string;
     experience: number;
     workshopAddress: string;
     vehicleSkills: string[];

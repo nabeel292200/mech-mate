@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { getSocket } from "../../src/services/socket";
+import { useAuthStore } from "../../src/store/authStore";
 
 const MapComponent = dynamic(() => import("../../src/components/MapComponent"), { ssr: false });
 
@@ -16,6 +17,7 @@ const SERVICES = [
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { user } = useAuthStore();
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [description, setDescription] = useState("");
   const searchParams = useSearchParams();
@@ -23,6 +25,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(false);
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
   const [pendingRequestId, setPendingRequestId] = useState<string | null>(null);
+  const [showRejectionModal, setShowRejectionModal] = useState(false);
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -49,9 +52,16 @@ export default function DashboardPage() {
       }
     });
 
+    socket.on("request_rejected", (data: any) => {
+      if (pendingRequestId && data.requestId === pendingRequestId) {
+        setShowRejectionModal(true);
+      }
+    });
+
     return () => {
       socket.off("request_created");
       socket.off("request_accepted");
+      socket.off("request_rejected");
     };
   }, [router, pendingRequestId]);
 
@@ -63,7 +73,13 @@ export default function DashboardPage() {
     
     setLoading(true);
 
-    const mockUserId = "60d0fe4f5311236168a109ca"; 
+    if (!user) {
+      alert("Please log in to request a mechanic.");
+      router.push("/login?role=user");
+      return;
+    }
+    
+    const actualUserId = user._id || user.id;
 
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -75,7 +91,7 @@ export default function DashboardPage() {
 
           const socket = getSocket();
           socket.emit("create_request", {
-            userId: mockUserId,
+            userId: actualUserId,
             brandName: brandName,
             problemDetails: `${selectedService} - ${description}`,
             userLocation,
@@ -181,6 +197,28 @@ export default function DashboardPage() {
         </button>
       </div>
 
+      {/* Rejection Modal Overlay */}
+      {showRejectionModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, backdropFilter: "blur(4px)" }}>
+          <div style={{ background: "#fff", borderRadius: 24, padding: "32px 24px", maxWidth: 340, width: "100%", textAlign: "center", boxShadow: "0 20px 40px rgba(0,0,0,0.2)" }}>
+            <div style={{ width: 64, height: 64, borderRadius: "50%", background: "#fef2f2", color: "#b91c1c", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 32 }}>cancel</span>
+            </div>
+            <h2 style={{ fontSize: 22, fontWeight: 800, color: "#111827", marginBottom: 12, letterSpacing: "-0.02em" }}>Mechanic Unavailable</h2>
+            <p style={{ fontSize: 14, color: "#6b7280", lineHeight: 1.6, marginBottom: 28 }}>
+              We're sorry, but the assigned mechanic is currently unable to accept this request. Please return to the home screen.
+            </p>
+            <button 
+              onClick={() => { setShowRejectionModal(false); router.push("/"); }} 
+              style={{ width: "100%", background: "#b91c1c", color: "#fff", border: "none", borderRadius: 12, padding: "16px", fontSize: 14, fontWeight: 800, cursor: "pointer", transition: "background 0.2s" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "#991b1b"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "#b91c1c"; }}
+            >
+              OK, RETURN HOME
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

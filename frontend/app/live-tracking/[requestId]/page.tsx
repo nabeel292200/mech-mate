@@ -16,6 +16,23 @@ export default function LiveTrackingPage() {
 
   const [userLocation, setUserLocation] = useState<{ lat: number, lng: number } | null>(null);
   const [mechanicLocation, setMechanicLocation] = useState<{ lat: number, lng: number } | null>(null);
+  const [showRejectionModal, setShowRejectionModal] = useState(false);
+  const [requestData, setRequestData] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchRequest = async () => {
+      try {
+        const { api } = require("../../../src/services/api.service");
+        const res = await api.get(`requests/${requestId}`);
+        if (res.success) {
+          setRequestData(res.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch request data:", err);
+      }
+    };
+    if (requestId) fetchRequest();
+  }, [requestId]);
 
   // 1. Listen for incoming location updates from the other person
   useEffect(() => {
@@ -34,11 +51,18 @@ export default function LiveTrackingPage() {
       }
     });
 
+    socket.on("request_rejected", (data: any) => {
+      if (data.requestId === requestId && role === "user") {
+        setShowRejectionModal(true);
+      }
+    });
+
     return () => {
       socket.off("location_update");
       socket.off("mechanic_arrived");
+      socket.off("request_rejected");
     };
-  }, [requestId]);
+  }, [requestId, role, router]);
 
   // 2. Continuously watch OUR location and broadcast it
   useEffect(() => {
@@ -89,11 +113,11 @@ export default function LiveTrackingPage() {
           <div className="absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur-sm shadow-md rounded-xl p-3 flex items-center justify-between z-[400] grayscale-0 filter-none max-w-lg mx-auto">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-neutral-200 overflow-hidden shrink-0 border border-neutral-100">
-                <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=100&q=80" alt="Marcus" className="w-full h-full object-cover" />
+                <img src={requestData?.userId?.avatar || "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png"} alt={requestData?.userId?.name || "Customer"} className="w-full h-full object-cover" />
               </div>
               <div>
-                <h3 className="text-[14px] font-bold text-neutral-900 leading-tight">Marcus Thorne</h3>
-                <p className="text-[11px] font-bold text-neutral-500 mt-0.5">+7.0 km away</p>
+                <h3 className="text-[14px] font-bold text-neutral-900 leading-tight">{requestData?.userId?.name || "Customer"}</h3>
+                <p className="text-[11px] font-bold text-neutral-500 mt-0.5">Live Location</p>
               </div>
             </div>
             <button className="w-10 h-10 bg-[#ffb067] hover:bg-orange-400 rounded-xl flex items-center justify-center text-white shadow-sm transition-colors shrink-0">
@@ -128,9 +152,9 @@ export default function LiveTrackingPage() {
                   <p className="text-[12px] font-bold text-neutral-800">Black</p>
                 </div>
                 <div className="col-span-2">
-                  <p className="text-[9px] font-bold text-neutral-400 mb-1">Plate number</p>
-                  <div className="inline-block border border-neutral-200 rounded text-[12px] font-bold text-neutral-800 px-2.5 py-1 bg-[#fcfcfc] tracking-[0.1em]">
-                    QA0-4429
+                  <p className="text-[9px] font-bold text-neutral-400 mb-1">Vehicle Brand</p>
+                  <div className="inline-block border border-neutral-200 rounded text-[12px] font-bold text-neutral-800 px-2.5 py-1 bg-[#fcfcfc]">
+                    {requestData?.brandName || "Unknown"}
                   </div>
                 </div>
               </div>
@@ -145,7 +169,7 @@ export default function LiveTrackingPage() {
             </div>
             <div className="bg-[#f8f9fa] rounded-xl p-3.5 border border-neutral-100/50">
               <p className="text-[12px] font-medium text-neutral-600 italic leading-relaxed">
-                "Smoke coming from under the hood. Engine stalled and won't restart on the shoulder."
+                "{requestData?.problemDetails || "No details provided"}"
               </p>
             </div>
           </div>
@@ -222,16 +246,16 @@ export default function LiveTrackingPage() {
         {/* Profile Details */}
         <div className="flex items-center gap-4 mb-6">
           <div className="relative w-[56px] h-[56px] rounded-xl overflow-hidden shadow-sm shrink-0 bg-neutral-100">
-            <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=200&q=80" alt="Marcus" className="w-full h-full object-cover" />
+            <img src={requestData?.mechanicUser?.avatar || "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png"} alt={requestData?.mechanicUser?.name || "Mechanic"} className="w-full h-full object-cover" />
             <div className="absolute -bottom-1 right-0 bg-[#f4a261] text-neutral-900 text-[10px] font-bold px-1.5 py-0.5 rounded border border-white flex items-center gap-0.5 z-10 shadow-sm">
-              <span className="text-[10px]">★</span> 4.8
+              <span className="text-[10px]">★</span> {requestData?.mechanicId?.rating || "5.0"}
             </div>
           </div>
           <div className="flex-1">
-            <h2 className="text-[19px] font-bold text-neutral-900 leading-tight">Marcus Thorne</h2>
+            <h2 className="text-[19px] font-bold text-neutral-900 leading-tight">{requestData?.mechanicUser?.name || "Assigning Mechanic..."}</h2>
             <div className="flex items-center gap-1.5 text-neutral-500 mt-0.5">
               <span className="material-symbols-outlined text-[14px]">check_circle</span>
-              <p className="text-[12px] font-medium">Senior Recovery Specialist</p>
+              <p className="text-[12px] font-medium">Expert Mechanic</p>
             </div>
           </div>
         </div>
@@ -279,7 +303,26 @@ export default function LiveTrackingPage() {
 
       </div>
 
-
+      {/* Rejection Modal Overlay */}
+      {showRejectionModal && (
+        <div className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-6 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl p-8 max-w-[340px] w-full text-center shadow-[0_20px_40px_rgba(0,0,0,0.2)]">
+            <div className="w-16 h-16 rounded-full bg-red-50 text-[#b91c1c] flex items-center justify-center mx-auto mb-5">
+              <span className="material-symbols-outlined text-[32px]">cancel</span>
+            </div>
+            <h2 className="text-[22px] font-extrabold text-neutral-900 mb-3 tracking-tight">Mechanic Unavailable</h2>
+            <p className="text-[14px] text-neutral-500 leading-relaxed mb-7">
+              We're sorry, but the assigned mechanic is currently unable to accept this request. Please return to the home screen.
+            </p>
+            <button 
+              onClick={() => { setShowRejectionModal(false); router.push("/"); }} 
+              className="w-full bg-[#b91c1c] hover:bg-[#991b1b] text-white border-none rounded-xl py-4 text-[14px] font-extrabold cursor-pointer transition-colors"
+            >
+              OK, RETURN HOME
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   );

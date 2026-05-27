@@ -6,6 +6,8 @@ import "express-async-errors"; // auto-catches async errors → passes to errorH
 
 import authRoutes from "./routes/auth.routes";
 import brandRoutes from "./routes/brand.routes";
+import mechanicRoutes from "./routes/mechanic.routes";
+import requestRoutes from "./routes/requests.routes";
 import { errorHandler, notFound } from "./middleware/error.middleware";
 
 const app = express();
@@ -34,6 +36,8 @@ app.get("/api/health", (_req: Request, res: Response) => {
 // ─── Routes ──────────────────────────────────────────────────────
 app.use("/api/auth", authRoutes);
 app.use("/api/brands", brandRoutes);
+app.use("/api/mechanic", mechanicRoutes);
+app.use("/api/requests", requestRoutes);
 
 // ─── Error handling (must be last) ───────────────────────────────
 app.use(notFound as any);

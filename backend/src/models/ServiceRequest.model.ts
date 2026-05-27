@@ -6,7 +6,10 @@ export interface IServiceRequest extends Document {
   brandName: string;
   problemDetails: string;
   userLocation: { lat: number; lng: number };
-  status: "pending" | "accepted" | "completed" | "cancelled";
+  status: "pending" | "accepted" | "invoiced" | "completed" | "cancelled";
+  paymentStatus?: "pending" | "completed";
+  totalAmount?: number;
+  invoiceItems?: Array<{ description: string; price: number }>;
 }
 
 const ServiceRequestSchema = new Schema(
@@ -21,9 +24,21 @@ const ServiceRequestSchema = new Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "accepted", "completed", "cancelled"],
+      enum: ["pending", "accepted", "invoiced", "completed", "cancelled"],
       default: "pending",
     },
+    paymentStatus: {
+      type: String,
+      enum: ["pending", "completed"],
+      default: "pending",
+    },
+    totalAmount: { type: Number, default: 0 },
+    invoiceItems: [
+      {
+        description: { type: String },
+        price: { type: Number },
+      }
+    ],
   },
   { timestamps: true }
 );
