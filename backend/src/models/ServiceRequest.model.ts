@@ -8,6 +8,7 @@ export interface IServiceRequest extends Document {
   userLocation: { lat: number; lng: number };
   status: "pending" | "accepted" | "invoiced" | "completed" | "cancelled";
   paymentStatus?: "pending" | "completed";
+  paymentMethod?: string;
   totalAmount?: number;
   invoiceItems?: Array<{ description: string; price: number }>;
 }
@@ -32,6 +33,7 @@ const ServiceRequestSchema = new Schema(
       enum: ["pending", "completed"],
       default: "pending",
     },
+    paymentMethod: { type: String },
     totalAmount: { type: Number, default: 0 },
     invoiceItems: [
       {

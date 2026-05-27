@@ -9,6 +9,7 @@ export interface IMechanic extends Document {
   liveLocation: boolean;
   rating: number;
   totalJobs: number;
+  idProofUrl?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -23,6 +24,7 @@ const mechanicSchema = new Schema<IMechanic>(
     liveLocation: { type: Boolean, default: true },
     rating: { type: Number, default: 0 },
     totalJobs: { type: Number, default: 0 },
+    idProofUrl: { type: String, default: "" },
   },
   { timestamps: true }
 );

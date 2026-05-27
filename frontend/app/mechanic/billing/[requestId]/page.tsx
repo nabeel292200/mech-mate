@@ -73,7 +73,7 @@ export default function MechanicBillingPage() {
       const socket = getSocket();
       socket.emit("send_invoice", { requestId });
       
-      router.push("/mechanic/completed-jobs");
+      router.push(`/mechanic/payment-waiting/${requestId}`);
     } catch (err) {
       console.error("Failed to send invoice:", err);
       alert("Failed to send invoice.");

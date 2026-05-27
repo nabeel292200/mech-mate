@@ -108,6 +108,10 @@ export const initSocket = (httpServer: HttpServer) => {
       io.emit("invoice_received", data);
     });
 
+    socket.on("payment_completed", (data: { requestId: string }) => {
+      io.emit("payment_completed", data);
+    });
+
     socket.on("disconnect", () => {
       connectedMechanics.delete(socket.id);
       console.log(`Socket Disconnected: ${socket.id}`);

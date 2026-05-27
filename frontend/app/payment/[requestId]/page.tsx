@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "../../../src/services/api.service";
+import { getSocket } from "../../../src/services/socket";
 
 export default function UserPaymentPage() {
   const { requestId } = useParams();
@@ -36,9 +37,10 @@ export default function UserPaymentPage() {
   const handlePayment = async () => {
     setProcessing(true);
     try {
-      const res: any = await api.post(`requests/${requestId}/pay`, {});
+      const res: any = await api.post(`requests/${requestId}/pay`, { paymentMethod: selectedMethod });
       if (res.success) {
-        // Emit socket event if needed, or backend can do it
+        const socket = getSocket();
+        socket.emit("payment_completed", { requestId });
         alert("Payment successful! Thank you.");
         router.push("/");
       }
@@ -197,6 +199,20 @@ export default function UserPaymentPage() {
                   </div>
                   <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedMethod === "cash" ? "border-[#b91c1c]" : "border-neutral-300"}`}>
                     {selectedMethod === "cash" && <div className="w-2.5 h-2.5 bg-[#b91c1c] rounded-full" />}
+                  </div>
+                </button>
+
+                {/* UPI Option */}
+                <button 
+                  onClick={() => setSelectedMethod("upi")}
+                  className={`w-full flex items-center justify-between p-4 rounded-[12px] border-2 transition-all text-left ${selectedMethod === "upi" ? "border-[#b91c1c] bg-[#fef2f2]" : "border-neutral-100 bg-white hover:border-neutral-200"}`}
+                >
+                  <div className="flex items-center gap-4">
+                    <span className={`material-symbols-outlined text-[24px] ${selectedMethod === "upi" ? "text-[#b91c1c]" : "text-neutral-400"}`}>qr_code_scanner</span>
+                    <p className={`text-[14px] font-bold ${selectedMethod === "upi" ? "text-[#b91c1c]" : "text-neutral-800"}`}>UPI (GPay / PhonePe)</p>
+                  </div>
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedMethod === "upi" ? "border-[#b91c1c]" : "border-neutral-300"}`}>
+                    {selectedMethod === "upi" && <div className="w-2.5 h-2.5 bg-[#b91c1c] rounded-full" />}
                   </div>
                 </button>
 

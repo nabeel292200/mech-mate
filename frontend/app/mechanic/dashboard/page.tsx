@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "../../../src/store/authStore";
 import { api } from "../../../src/services/api.service";
 import MechanicLayout from "../../../src/components/MechanicLayout";
+import AvatarUpload from "../../../src/components/AvatarUpload";
+import IdProofUpload from "../../../src/components/IdProofUpload";
 
 const VEHICLE_TYPES = [
   { id: "bike",  label: "Bike",  icon: "two_wheeler" },
@@ -22,7 +24,6 @@ export default function MechanicProfile() {
   const { user, loading: authLoading, updateProfile } = useAuthStore();
 
   const [step, setStep] = useState(1);
-  const [avatar, setAvatar] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [experience, setExperience] = useState("");
@@ -40,8 +41,9 @@ export default function MechanicProfile() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [brandCategoryFilter, setBrandCategoryFilter] = useState("matched");
 
-  const fileRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string>("");
+  const [idProofUrl, setIdProofUrl] = useState<string>("");
 
   const isComplete = user?.isProfileComplete || false;
 
@@ -115,10 +117,7 @@ export default function MechanicProfile() {
     });
   };
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) setAvatar(URL.createObjectURL(file));
-  };
+  const handleAvatarChange = (_e: React.ChangeEvent<HTMLInputElement>) => {}; // Replaced by AvatarUpload component
 
   const handleNextStep = () => {
     setError("");
@@ -226,19 +225,19 @@ export default function MechanicProfile() {
         <div style={s.card}>
           <p style={s.sectionTitle}>Personal Details</p>
 
-          <div style={{ textAlign: "center", marginBottom: 20 }}>
-            <div style={s.uploadCircle} onClick={() => fileRef.current?.click()}>
-              {avatar
-                ? <img src={avatar} alt="profile" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                : <>
-                    <span className="material-symbols-outlined" style={{ fontSize: 28, color: "#9ca3af" }}>photo_camera</span>
-                    <div style={{ position: "absolute", bottom: 2, right: 2, background: "#b91c1c", borderRadius: "50%", width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: 13, color: "#fff" }}>add</span>
-                    </div>
-                  </>}
-            </div>
-            <p style={{ fontSize: 12, color: "#6b7280" }}>Upload professional avatar</p>
-            <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleAvatarChange} />
+          <div className="flex flex-col items-center mb-6">
+            <AvatarUpload
+              currentAvatar={user?.avatar || ""}
+              onSuccess={(url) => setAvatarUrl(url)}
+            />
+          </div>
+
+          <div className="mb-5">
+            <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-3">ID Proof (Aadhaar / License / Passport)</label>
+            <IdProofUpload
+              currentUrl={user?.mechanic?.idProofUrl || ""}
+              onSuccess={(url) => setIdProofUrl(url)}
+            />
           </div>
 
           <label style={s.label}>Full Name</label>

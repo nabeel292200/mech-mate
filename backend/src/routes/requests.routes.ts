@@ -34,6 +34,7 @@ router.get("/:id", async (req: Request, res: Response) => {
 // Process payment
 router.post("/:id/pay", async (req: Request, res: Response) => {
   try {
+    const { paymentMethod } = req.body;
     const request = await ServiceRequest.findById(req.params.id);
     
     if (!request) {
@@ -47,6 +48,9 @@ router.post("/:id/pay", async (req: Request, res: Response) => {
     // Mark as paid
     request.status = "completed";
     request.paymentStatus = "completed";
+    if (paymentMethod) {
+      request.paymentMethod = paymentMethod;
+    }
     await request.save();
 
     res.json({ success: true, data: request, message: "Payment processed successfully" });

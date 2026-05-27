@@ -6,6 +6,7 @@ export interface IUser extends Document {
   password?: string;
   role: "user" | "mechanic";
   name: string;
+  avatar?: string;
   isProfileComplete: boolean;
   isActive: boolean;
   mechanic?: any;
@@ -36,6 +37,10 @@ const userSchema = new Schema<IUser>(
     name: {
       type: String,
       trim: true,
+      default: "",
+    },
+    avatar: {
+      type: String,
       default: "",
     },
     isProfileComplete: {

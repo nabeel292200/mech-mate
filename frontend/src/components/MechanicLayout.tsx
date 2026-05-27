@@ -78,7 +78,11 @@ export default function MechanicLayout({ children, activeTab }: MechanicLayoutPr
             </p>
           </div>
           <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#f3f4f6", overflow: "hidden", border: "2px solid #e5e7eb" }}>
-            <img src="https://i.pravatar.cc/80?img=12" alt={user?.name || "avatar"} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            <img
+              src={user?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || "M")}&background=b91c1c&color=fff&size=80`}
+              alt={user?.name || "avatar"}
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
           </div>
         </header>
 
