@@ -46,11 +46,12 @@ export const initSocket = (httpServer: HttpServer) => {
         let mechanicsNotified = 0;
 
         for (const [socketId, mechanicInfo] of connectedMechanics.entries()) {
-          const isExpert = mechanicInfo.brandExpertise.some(b =>
-            b.toLowerCase() === data.brandName.toLowerCase() ||
-            b.toLowerCase().includes(data.brandName.toLowerCase()) ||
-            data.brandName.toLowerCase().includes(b.toLowerCase())
-          );
+          const isExpert = mechanicInfo.brandExpertise?.some(b => {
+            if (!b || !data.brandName) return false;
+            const mechB = b.toLowerCase();
+            const reqB = data.brandName.toLowerCase();
+            return mechB === reqB || mechB.includes(reqB) || reqB.includes(mechB);
+          });
 
           if (isExpert) {
             io.to(socketId).emit("new_request", newReq);

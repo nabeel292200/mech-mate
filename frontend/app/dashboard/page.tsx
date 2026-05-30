@@ -23,7 +23,7 @@ export default function DashboardPage() {
   const searchParams = useSearchParams();
   const brandName = searchParams.get("brand") || "Toyota";
   const [loading, setLoading] = useState(false);
-  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [userLocation, setUserLocation] = useState<{ lat: number, lng: number } | null>(null);
   const [pendingRequestId, setPendingRequestId] = useState<string | null>(null);
   const [showRejectionModal, setShowRejectionModal] = useState(false);
 
@@ -41,27 +41,39 @@ export default function DashboardPage() {
   // Initialize socket listener for redirection
   useEffect(() => {
     const socket = getSocket();
-    
-    socket.on("request_created", (data: any) => {
-      setPendingRequestId(data.request._id);
-    });
 
-    socket.on("request_accepted", (updatedReq: any) => {
+    const handleRequestCreated = (data: any) => {
+      setPendingRequestId(data.request._id);
+    };
+
+    const handleRequestAccepted = (updatedReq: any) => {
       if (pendingRequestId && updatedReq._id === pendingRequestId) {
         router.push(`/live-tracking/${updatedReq._id}?role=user`);
       }
-    });
+    };
 
-    socket.on("request_rejected", (data: any) => {
+    const handleRequestRejected = (data: any) => {
       if (pendingRequestId && data.requestId === pendingRequestId) {
         setShowRejectionModal(true);
       }
-    });
+    };
+
+    const handleRequestError = (data: any) => {
+      alert(`Error: ${data.message}`);
+      setLoading(false);
+      setPendingRequestId(null);
+    };
+
+    socket.on("request_created", handleRequestCreated);
+    socket.on("request_accepted", handleRequestAccepted);
+    socket.on("request_rejected", handleRequestRejected);
+    socket.on("request_error", handleRequestError);
 
     return () => {
-      socket.off("request_created");
-      socket.off("request_accepted");
-      socket.off("request_rejected");
+      socket.off("request_created", handleRequestCreated);
+      socket.off("request_accepted", handleRequestAccepted);
+      socket.off("request_rejected", handleRequestRejected);
+      socket.off("request_error", handleRequestError);
     };
   }, [router, pendingRequestId]);
 
@@ -70,7 +82,7 @@ export default function DashboardPage() {
       alert("Please select a service category.");
       return;
     }
-    
+
     setLoading(true);
 
     if (!user) {
@@ -78,34 +90,18 @@ export default function DashboardPage() {
       router.push("/login?role=user");
       return;
     }
-    
+
     const actualUserId = user._id || user.id;
 
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const userLocation = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          };
+    const socket = getSocket();
+    const finalLocation = userLocation || { lat: 10.8505, lng: 76.2711 };
 
-          const socket = getSocket();
-          socket.emit("create_request", {
-            userId: actualUserId,
-            brandName: brandName,
-            problemDetails: `${selectedService} - ${description}`,
-            userLocation,
-          });
-        },
-        (err) => {
-          alert("Location access denied. Please enable GPS.");
-          setLoading(false);
-        }
-      );
-    } else {
-      alert("Geolocation is not supported by your browser.");
-      setLoading(false);
-    }
+    socket.emit("create_request", {
+      userId: actualUserId,
+      brandName: brandName,
+      problemDetails: `${selectedService} - ${description}`,
+      userLocation: finalLocation,
+    });
   };
 
   const s: Record<string, React.CSSProperties> = {
@@ -189,8 +185,8 @@ export default function DashboardPage() {
           style={s.requestBtn}
           onClick={handleRequest}
           disabled={loading || !!pendingRequestId}
-          onMouseEnter={(e) => { if(!loading && !pendingRequestId) e.currentTarget.style.transform = "translateY(-2px)" }}
-          onMouseLeave={(e) => { if(!loading && !pendingRequestId) e.currentTarget.style.transform = "" }}
+          onMouseEnter={(e) => { if (!loading && !pendingRequestId) e.currentTarget.style.transform = "translateY(-2px)" }}
+          onMouseLeave={(e) => { if (!loading && !pendingRequestId) e.currentTarget.style.transform = "" }}
         >
           <span style={{ fontSize: 12, background: "rgba(255,255,255,0.2)", padding: "2px 6px", borderRadius: 4, marginRight: 4 }}>SOS</span>
           {pendingRequestId ? "WAITING FOR EXPERT..." : loading ? "LOCATING EXPERT..." : "REQUEST MECHANIC"}
@@ -208,8 +204,8 @@ export default function DashboardPage() {
             <p style={{ fontSize: 14, color: "#6b7280", lineHeight: 1.6, marginBottom: 28 }}>
               We're sorry, but the assigned mechanic is currently unable to accept this request. Please return to the home screen.
             </p>
-            <button 
-              onClick={() => { setShowRejectionModal(false); router.push("/"); }} 
+            <button
+              onClick={() => { setShowRejectionModal(false); router.push("/"); }}
               style={{ width: "100%", background: "#b91c1c", color: "#fff", border: "none", borderRadius: 12, padding: "16px", fontSize: 14, fontWeight: 800, cursor: "pointer", transition: "background 0.2s" }}
               onMouseEnter={(e) => { e.currentTarget.style.background = "#991b1b"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = "#b91c1c"; }}

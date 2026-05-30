@@ -93,12 +93,12 @@ export default function RequestServicePage() {
     <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-6">
       <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl">
         <h1 className="text-2xl font-bold text-slate-800 mb-6 text-center">Request Assistance</h1>
-        
+
         {status === "idle" && (
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Vehicle Brand</label>
-              <select 
+              <select
                 value={brand}
                 onChange={(e) => setBrand(e.target.value)}
                 className="w-full border border-slate-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-blue-500"
@@ -112,7 +112,7 @@ export default function RequestServicePage() {
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Problem Details</label>
-              <textarea 
+              <textarea
                 value={problem}
                 onChange={(e) => setProblem(e.target.value)}
                 rows={4}
@@ -123,7 +123,7 @@ export default function RequestServicePage() {
 
             {error && <p className="text-red-500 text-sm">{error}</p>}
 
-            <button 
+            <button
               type="submit"
               className="w-full bg-blue-600 text-white font-semibold py-3 rounded-lg hover:bg-blue-700 transition"
             >
@@ -142,8 +142,8 @@ export default function RequestServicePage() {
         {status === "waiting" && (
           <div className="text-center py-10 space-y-4">
             <div className="relative flex justify-center items-center mx-auto w-20 h-20">
-               <div className="absolute animate-ping w-full h-full bg-blue-400 rounded-full opacity-50"></div>
-               <div className="relative w-10 h-10 bg-blue-600 rounded-full"></div>
+              <div className="absolute animate-ping w-full h-full bg-blue-400 rounded-full opacity-50"></div>
+              <div className="relative w-10 h-10 bg-blue-600 rounded-full"></div>
             </div>
             <h2 className="text-xl font-semibold text-slate-800">Broadcasting Request</h2>
             <p className="text-slate-600">Alerted {notifiedCount} {brand} expert(s) nearby...</p>
@@ -159,5 +159,25 @@ export default function RequestServicePage() {
         )}
       </div>
     </div>
+  );
+}
+<div className="relative w-10 h-10 bg-blue-600 rounded-full"></div>
+            </div >
+            <h2 className="text-xl font-semibold text-slate-800">Broadcasting Request</h2>
+            <p className="text-slate-600">Alerted {notifiedCount} {brand} expert(s) nearby...</p>
+          </div >
+        )}
+
+{
+  status === "accepted" && (
+    <div className="text-center py-10 space-y-4">
+      <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto text-3xl">✓</div>
+      <h2 className="text-xl font-semibold text-green-700">Mechanic on the way!</h2>
+      <p className="text-slate-600">Connecting to live GPS map...</p>
+    </div>
+  )
+}
+      </div >
+    </div >
   );
 }

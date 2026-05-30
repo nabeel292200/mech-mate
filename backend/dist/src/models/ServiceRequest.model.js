@@ -34,15 +34,32 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
-const mechanicSchema = new mongoose_1.Schema({
-    experience: { type: Number, default: 0 },
-    workshopAddress: { type: String, default: "" },
-    vehicleSkills: { type: [String], default: [] },
-    brandExpertise: { type: [String], default: [] },
-    isAvailable: { type: Boolean, default: false },
-    liveLocation: { type: Boolean, default: true },
-    rating: { type: Number, default: 0 },
-    totalJobs: { type: Number, default: 0 },
-    idProofUrl: { type: String, default: "" },
+const ServiceRequestSchema = new mongoose_1.Schema({
+    userId: { type: mongoose_1.Schema.Types.ObjectId, ref: "User", required: true },
+    mechanicId: { type: mongoose_1.Schema.Types.ObjectId, ref: "Mechanic" },
+    brandName: { type: String, required: true },
+    problemDetails: { type: String, required: true },
+    userLocation: {
+        lat: { type: Number, required: true },
+        lng: { type: Number, required: true },
+    },
+    status: {
+        type: String,
+        enum: ["pending", "accepted", "invoiced", "completed", "cancelled"],
+        default: "pending",
+    },
+    paymentStatus: {
+        type: String,
+        enum: ["pending", "completed"],
+        default: "pending",
+    },
+    paymentMethod: { type: String },
+    totalAmount: { type: Number, default: 0 },
+    invoiceItems: [
+        {
+            description: { type: String },
+            price: { type: Number },
+        }
+    ],
 }, { timestamps: true });
-exports.default = mongoose_1.default.model("Mechanic", mechanicSchema);
+exports.default = mongoose_1.default.model("ServiceRequest", ServiceRequestSchema);

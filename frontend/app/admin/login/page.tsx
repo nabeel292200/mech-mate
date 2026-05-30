@@ -32,8 +32,7 @@ export default function AdminLoginPage() {
     try {
       // Simulate validation / authentication response
       await new Promise((resolve) => setTimeout(resolve, 1000));
-      alert("Admin authenticated! Redirecting to admin dashboard...");
-      // In future: router.push("/admin/dashboard");
+      router.push("/admin/dashboard");
     } catch (err: any) {
       setError("Invalid administrative credentials.");
     } finally {

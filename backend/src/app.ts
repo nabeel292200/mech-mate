@@ -9,6 +9,7 @@ import brandRoutes from "./routes/brand.routes";
 import mechanicRoutes from "./routes/mechanic.routes";
 import requestRoutes from "./routes/requests.routes";
 import uploadRoutes from "./routes/upload.routes";
+import adminRoutes from "./routes/admin.routes";
 import { errorHandler, notFound } from "./middleware/error.middleware";
 
 const app = express();
@@ -17,7 +18,7 @@ const app = express();
 app.use(helmet());
 app.use(
   cors({
-    origin: process.env.CLIENT_ORIGIN || "http://localhost:3000",
+    origin: ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002"],
     credentials: true,
   })
 );
@@ -40,6 +41,7 @@ app.use("/api/brands",   brandRoutes);
 app.use("/api/mechanic", mechanicRoutes);
 app.use("/api/requests", requestRoutes);
 app.use("/api/upload",   uploadRoutes);
+app.use("/api/admin",    adminRoutes);
 
 // ─── Error handling (must be last) ───────────────────────────────
 app.use(notFound as any);

@@ -61,6 +61,10 @@ const userSchema = new mongoose_1.Schema({
         trim: true,
         default: "",
     },
+    avatar: {
+        type: String,
+        default: "",
+    },
     isProfileComplete: {
         type: Boolean,
         default: false,

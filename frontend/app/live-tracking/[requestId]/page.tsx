@@ -38,29 +38,33 @@ export default function LiveTrackingPage() {
   useEffect(() => {
     const socket = getSocket();
 
-    socket.on("location_update", (data: any) => {
+    const handleLocationUpdate = (data: any) => {
       if (data.requestId === requestId) {
         if (data.role === "user") setUserLocation(data.location);
         if (data.role === "mechanic") setMechanicLocation(data.location);
       }
-    });
+    };
 
-    socket.on("mechanic_arrived", (data: any) => {
+    const handleMechanicArrived = (data: any) => {
       if (data.requestId === requestId && role === "user") {
         router.push(`/service-progress/${requestId}`);
       }
-    });
+    };
 
-    socket.on("request_rejected", (data: any) => {
+    const handleRequestRejected = (data: any) => {
       if (data.requestId === requestId && role === "user") {
         setShowRejectionModal(true);
       }
-    });
+    };
+
+    socket.on("location_update", handleLocationUpdate);
+    socket.on("mechanic_arrived", handleMechanicArrived);
+    socket.on("request_rejected", handleRequestRejected);
 
     return () => {
-      socket.off("location_update");
-      socket.off("mechanic_arrived");
-      socket.off("request_rejected");
+      socket.off("location_update", handleLocationUpdate);
+      socket.off("mechanic_arrived", handleMechanicArrived);
+      socket.off("request_rejected", handleRequestRejected);
     };
   }, [requestId, role, router]);
 

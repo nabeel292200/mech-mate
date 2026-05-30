@@ -3,30 +3,8 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "../../../src/store/authStore";
 import { getSocket } from "../../../src/services/socket";
+import { api } from "../../../src/services/api.service";
 import MechanicLayout from "../../../src/components/MechanicLayout";
-
-
-
-const REQUESTS = [
-  {
-    id: 1, priority: "URGENT", name: "Marcus Thorne", km: "0.8",
-    car: "2021 BMW X5 • Black",
-    problem: `"Smoke coming from under the hood. Engine stalling and won't restart on the shoulder."`,
-    img: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&auto=format&fit=crop&q=70",
-  },
-  {
-    id: 2, priority: "STANDARD", name: "Sarah Jenkins", km: "2.4",
-    car: "2019 Toyota RAV4 • Silver",
-    problem: `"Flat rear-right tire. Spare is in the trunk but I don't have a working jack."`,
-    img: "https://images.unsplash.com/photo-1609743522471-83c84ce23e32?w=400&auto=format&fit=crop&q=70",
-  },
-  {
-    id: 3, priority: "URGENT", name: "David Wilson", km: "3.7",
-    car: "2022 Honda Civic • Red",
-    problem: `"Battery seems dead. Clicking sound when trying to start. Need a jump or replacement."`,
-    img: "https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=400&auto=format&fit=crop&q=70",
-  },
-];
 
 export default function MechanicHome() {
   const router = useRouter();
@@ -36,10 +14,11 @@ export default function MechanicHome() {
   const [requests, setRequests] = useState<any[]>([]);
 
   useEffect(() => {
+    if (!user) return; // Wait for user token to be ready
+
     const fetchPending = async () => {
       try {
-        const { api } = require("../../../src/services/api.service");
-        const res = await api.get("mechanic/requests/pending");
+        const res = await api.get<{ success: boolean, data: any[] }>("mechanic/requests/pending");
         if (res.success) {
           const mapped = res.data.map((req: any) => ({
             id: req._id,
@@ -50,8 +29,15 @@ export default function MechanicHome() {
             problem: req.problemDetails,
             img: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&auto=format&fit=crop&q=70",
           }));
-          // Only show requests that are not dismissed or accepted yet locally
-          setRequests(mapped);
+          setRequests((prev) => {
+            const merged = [...prev];
+            mapped.forEach((m: any) => {
+              if (!merged.some(r => r.id === m.id)) {
+                merged.push(m);
+              }
+            });
+            return merged;
+          });
         }
       } catch (err) {
         console.error("Failed to fetch pending requests", err);
@@ -60,14 +46,14 @@ export default function MechanicHome() {
     fetchPending();
 
     const socket = getSocket();
-    
+
     if (user && user.role === "mechanic" && user.mechanic) {
       const mechanicId = typeof user.mechanic === "string" ? user.mechanic : (user.mechanic._id || user.mechanic.id);
       if (mechanicId) {
         socket.emit("register_mechanic", { mechanicId });
       }
     }
-    
+
     socket.on("new_request", (req: any) => {
       // Map DB request to UI request format
       const mappedReq = {
@@ -93,7 +79,7 @@ export default function MechanicHome() {
       if (!mechId || updatedReq.mechanicId !== mechId) {
         setRequests((prev) => prev.filter(r => r.id !== updatedReq._id));
       }
-      
+
       if (mechId && updatedReq.mechanicId === mechId) {
         router.push(`/live-tracking/${updatedReq._id}?role=mechanic`);
       }

@@ -8,11 +8,15 @@ dotenv_1.default.config();
 const app_1 = __importDefault(require("./src/app"));
 const db_1 = __importDefault(require("./src/config/db"));
 const migration_utils_1 = require("./src/utils/migration.utils");
+const http_1 = __importDefault(require("http"));
+const socket_1 = require("./src/socket");
 const PORT = process.env.PORT || 4000;
 const startServer = async () => {
     await (0, db_1.default)();
     await (0, migration_utils_1.migrateLegacyMechanics)();
-    app_1.default.listen(PORT, () => {
+    const server = http_1.default.createServer(app_1.default);
+    (0, socket_1.initSocket)(server);
+    server.listen(PORT, () => {
         console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         console.log("🚗  MECH-MATE Backend (TypeScript)");
         console.log(`📡  Server  → http://localhost:${PORT}`);

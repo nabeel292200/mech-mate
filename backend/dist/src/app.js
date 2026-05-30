@@ -10,12 +10,16 @@ const morgan_1 = __importDefault(require("morgan"));
 require("express-async-errors"); // auto-catches async errors → passes to errorHandler
 const auth_routes_1 = __importDefault(require("./routes/auth.routes"));
 const brand_routes_1 = __importDefault(require("./routes/brand.routes"));
+const mechanic_routes_1 = __importDefault(require("./routes/mechanic.routes"));
+const requests_routes_1 = __importDefault(require("./routes/requests.routes"));
+const upload_routes_1 = __importDefault(require("./routes/upload.routes"));
+const admin_routes_1 = __importDefault(require("./routes/admin.routes"));
 const error_middleware_1 = require("./middleware/error.middleware");
 const app = (0, express_1.default)();
 // ─── Security & Parsing ───────────────────────────────────────────
 app.use((0, helmet_1.default)());
 app.use((0, cors_1.default)({
-    origin: process.env.CLIENT_ORIGIN || "http://localhost:3000",
+    origin: ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002"],
     credentials: true,
 }));
 app.use(express_1.default.json({ limit: "10kb" }));
@@ -31,6 +35,10 @@ app.get("/api/health", (_req, res) => {
 // ─── Routes ──────────────────────────────────────────────────────
 app.use("/api/auth", auth_routes_1.default);
 app.use("/api/brands", brand_routes_1.default);
+app.use("/api/mechanic", mechanic_routes_1.default);
+app.use("/api/requests", requests_routes_1.default);
+app.use("/api/upload", upload_routes_1.default);
+app.use("/api/admin", admin_routes_1.default);
 // ─── Error handling (must be last) ───────────────────────────────
 app.use(error_middleware_1.notFound);
 app.use(error_middleware_1.errorHandler);
