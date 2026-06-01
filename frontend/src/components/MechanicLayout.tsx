@@ -20,6 +20,40 @@ export default function MechanicLayout({ children, activeTab }: MechanicLayoutPr
   const router = useRouter();
   const { user, logout } = useAuthStore();
 
+  if (user?.approvalStatus === "pending") {
+    return (
+      <div style={{ minHeight: "100vh", background: "#f5f6fa", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, fontFamily: "'Inter', sans-serif" }}>
+        <div style={{ background: "#fff", padding: "40px 32px", borderRadius: 16, textAlign: "center", maxWidth: 420, width: "100%", boxShadow: "0 4px 20px rgba(0,0,0,0.05)" }}>
+          <span className="material-symbols-outlined" style={{ fontSize: 64, color: "#f59e0b", marginBottom: 16 }}>hourglass_empty</span>
+          <h2 style={{ fontSize: 24, fontWeight: 800, color: "#111827", margin: "0 0 12px 0", letterSpacing: "-0.02em" }}>Pending Approval</h2>
+          <p style={{ fontSize: 15, color: "#4b5563", marginBottom: 32, lineHeight: 1.6 }}>
+            Your profile has been submitted and is currently under review by our admin team. You will be notified once it is approved. Please wait.
+          </p>
+          <button onClick={logout} style={{ background: "#111827", color: "#fff", border: "none", padding: "14px 24px", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer", width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "background 0.2s" }} onMouseEnter={(e) => e.currentTarget.style.background = "#1f2937"} onMouseLeave={(e) => e.currentTarget.style.background = "#111827"}>
+            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>logout</span> Logout
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (user?.approvalStatus === "rejected") {
+    return (
+      <div style={{ minHeight: "100vh", background: "#f5f6fa", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, fontFamily: "'Inter', sans-serif" }}>
+        <div style={{ background: "#fff", padding: "40px 32px", borderRadius: 16, textAlign: "center", maxWidth: 420, width: "100%", boxShadow: "0 4px 20px rgba(0,0,0,0.05)" }}>
+          <span className="material-symbols-outlined" style={{ fontSize: 64, color: "#ef4444", marginBottom: 16 }}>cancel</span>
+          <h2 style={{ fontSize: 24, fontWeight: 800, color: "#111827", margin: "0 0 12px 0", letterSpacing: "-0.02em" }}>Application Rejected</h2>
+          <p style={{ fontSize: 15, color: "#4b5563", marginBottom: 32, lineHeight: 1.6 }}>
+            Unfortunately, your application to join Mech-Mate has been rejected by the admin team. Please contact support for more information.
+          </p>
+          <button onClick={logout} style={{ background: "#111827", color: "#fff", border: "none", padding: "14px 24px", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer", width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "background 0.2s" }} onMouseEnter={(e) => e.currentTarget.style.background = "#1f2937"} onMouseLeave={(e) => e.currentTarget.style.background = "#111827"}>
+            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>logout</span> Logout
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: "flex", height: "100vh", fontFamily: "'Inter','Geist Sans',Arial,sans-serif", background: "#f5f6fa", overflow: "hidden" }}>
       

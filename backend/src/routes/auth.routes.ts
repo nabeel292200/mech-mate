@@ -1,6 +1,6 @@
 import express from "express";
 import rateLimit from "express-rate-limit";
-import { register, login, getMe, logout, updateProfile } from "../controllers/auth.controller";
+import { register, login, getMe, logout, updateProfile, forgotPassword, resetPassword } from "../controllers/auth.controller";
 import { protect } from "../middleware/auth.middleware";
 
 const router = express.Router();
@@ -16,11 +16,13 @@ const authLimiter = rateLimit({
 
 // Public routes
 router.post("/register", authLimiter, register as any);
-router.post("/login",    authLimiter, login as any);
+router.post("/login", authLimiter, login as any);
+router.post("/forgot-password", authLimiter, forgotPassword as any);
+router.post("/reset-password", authLimiter, resetPassword as any);
 
 // Protected routes
-router.get("/me",       protect as any, getMe as any);
-router.put("/profile",  protect as any, updateProfile as any);
-router.post("/logout",  protect as any, logout as any);
+router.get("/me", protect as any, getMe as any);
+router.put("/profile", protect as any, updateProfile as any);
+router.post("/logout", protect as any, logout as any);
 
 export default router;

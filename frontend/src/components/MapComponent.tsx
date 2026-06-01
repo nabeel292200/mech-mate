@@ -73,13 +73,13 @@ export default function MapComponent({ userLocation, mechanicLocation, role }: M
   const mechIcon = createMechIcon();
 
   return (
-    <MapContainer
-      key="map"
-      center={[center.lat, center.lng]}
-      zoom={13}
-      minZoom={7}
-      style={{ height: '100%', width: '100%' }}
-    >
+    <div style={{ height: '100%', width: '100%' }}>
+      <MapContainer
+        center={[center.lat, center.lng]}
+        zoom={13}
+        minZoom={7}
+        style={{ height: '100%', width: '100%' }}
+      >
       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
       <MapUpdater userLoc={userLocation} mechLoc={mechanicLocation} />
 
@@ -94,6 +94,7 @@ export default function MapComponent({ userLocation, mechanicLocation, role }: M
           <Popup>{role === "mechanic" ? "You (Mechanic)" : "Mechanic Location"}</Popup>
         </Marker>
       )}
-    </MapContainer>
+      </MapContainer>
+    </div>
   );
 }

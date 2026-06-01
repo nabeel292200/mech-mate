@@ -3,6 +3,7 @@
 import React, { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "../../src/store/authStore";
+import { api } from "../../src/services/api.service";
 
 function LoginContent() {
   const router = useRouter();
@@ -10,9 +11,12 @@ function LoginContent() {
   const role = (searchParams.get("role") as "user" | "mechanic") ?? "user";
   const { login, register } = useAuthStore();
 
-  const [mode, setMode] = useState<"login" | "register">("login");
+  const [mode, setMode] = useState<"login" | "register" | "forgot" | "reset">("login");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [resetCode, setResetCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [shake, setShake] = useState(false);
   const [error, setError] = useState("");
@@ -28,26 +32,73 @@ function LoginContent() {
     e.preventDefault();
     const cleanPhone = phone.replace(/\D/g, "");
 
-    if (cleanPhone.length !== 10) {
-      setError("Please enter a valid 10-digit number");
-      triggerShake();
-      return;
-    }
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
-      triggerShake();
-      return;
+    // Validation
+    if (mode === "forgot") {
+      if (!phone.trim()) {
+        setError("Please enter a valid email or phone number");
+        triggerShake();
+        return;
+      }
+    } else if (mode === "reset") {
+      if (resetCode.length !== 4) {
+        setError("Please enter a valid 4-digit code");
+        triggerShake();
+        return;
+      }
+      if (newPassword.length < 6) {
+        setError("Password must be at least 6 characters");
+        triggerShake();
+        return;
+      }
+    } else {
+      if (cleanPhone.length !== 10) {
+        setError("Please enter a valid 10-digit number");
+        triggerShake();
+        return;
+      }
+      if (password.length < 6) {
+        setError("Password must be at least 6 characters");
+        triggerShake();
+        return;
+      }
     }
 
     setError("");
     setLoading(true);
 
     try {
+      if (mode === "forgot") {
+        const res = await api.post<{success: boolean; message: string}>("auth/forgot-password", { emailOrPhone: phone });
+        if (res.success) {
+          setMode("reset");
+          setError("");
+        }
+        setLoading(false);
+        return;
+      }
+
+      if (mode === "reset") {
+        const res = await api.post<{success: boolean; message: string}>("auth/reset-password", { emailOrPhone: phone, resetCode, newPassword });
+        if (res.success) {
+          setMode("login");
+          setPassword("");
+          setError("Password reset successfully. Please log in."); // Show as info
+        }
+        setLoading(false);
+        return;
+      }
+
       let authData;
       if (mode === "login") {
         authData = await login(cleanPhone, password);
       } else {
-        authData = await register(cleanPhone, password, role);
+        if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+          setError("Please enter a valid email address");
+          triggerShake();
+          setLoading(false);
+          return;
+        }
+        authData = await register(cleanPhone, email, password, role);
       }
 
       // ---- Role mismatch guard ----
@@ -116,98 +167,172 @@ function LoginContent() {
             style={{ padding: "32px 28px" }}
           >
             {/* Toggle Tabs */}
-            <div style={{ display: "flex", background: "#f3f4f6", borderRadius: 12, padding: 4, marginBottom: 24 }}>
-              <button
-                type="button"
-                onClick={() => { setMode("login"); setError(""); }}
-                style={{
-                  flex: 1,
-                  padding: "10px 0",
-                  fontSize: 14,
-                  fontWeight: "bold",
-                  borderRadius: 8,
-                  border: "none",
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                  background: mode === "login" ? "#fff" : "transparent",
-                  color: mode === "login" ? "#111827" : "#9ca3af",
-                  boxShadow: mode === "login" ? "0 1px 3px rgba(0,0,0,0.1)" : "none"
-                }}
-              >
-                Sign In
-              </button>
-              <button
-                type="button"
-                onClick={() => { setMode("register"); setError(""); }}
-                style={{
-                  flex: 1,
-                  padding: "10px 0",
-                  fontSize: 14,
-                  fontWeight: "bold",
-                  borderRadius: 8,
-                  border: "none",
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                  background: mode === "register" ? "#fff" : "transparent",
-                  color: mode === "register" ? "#111827" : "#9ca3af",
-                  boxShadow: mode === "register" ? "0 1px 3px rgba(0,0,0,0.1)" : "none"
-                }}
-              >
-                Register
-              </button>
-            </div>
+            {(mode === "login" || mode === "register") && (
+              <div style={{ display: "flex", background: "#f3f4f6", borderRadius: 12, padding: 4, marginBottom: 24 }}>
+                <button
+                  type="button"
+                  onClick={() => { setMode("login"); setError(""); }}
+                  style={{
+                    flex: 1,
+                    padding: "10px 0",
+                    fontSize: 14,
+                    fontWeight: "bold",
+                    borderRadius: 8,
+                    border: "none",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                    background: mode === "login" ? "#fff" : "transparent",
+                    color: mode === "login" ? "#111827" : "#9ca3af",
+                    boxShadow: mode === "login" ? "0 1px 3px rgba(0,0,0,0.1)" : "none"
+                  }}
+                >
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setMode("register"); setError(""); }}
+                  style={{
+                    flex: 1,
+                    padding: "10px 0",
+                    fontSize: 14,
+                    fontWeight: "bold",
+                    borderRadius: 8,
+                    border: "none",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                    background: mode === "register" ? "#fff" : "transparent",
+                    color: mode === "register" ? "#111827" : "#9ca3af",
+                    boxShadow: mode === "register" ? "0 1px 3px rgba(0,0,0,0.1)" : "none"
+                  }}
+                >
+                  Register
+                </button>
+              </div>
+            )}
 
             <h1 className="text-[22px] font-extrabold text-gray-900 tracking-tight mb-1.5">
-              {mode === "login" ? "Welcome Back" : "Create Account"}
+              {mode === "login" ? "Welcome Back" : mode === "register" ? "Create Account" : mode === "forgot" ? "Reset Password" : "Enter Reset Code"}
             </h1>
             <p className="text-[14px] text-gray-400 leading-relaxed mb-6">
-              {role === "mechanic"
-                ? `Authenticate as a MECH-MATE Mechanic.`
-                : `Authenticate to access rapid roadside workshops.`}
+              {mode === "login" || mode === "register" ? (
+                role === "mechanic"
+                  ? `Authenticate as a MECH-MATE Mechanic.`
+                  : `Authenticate to access rapid roadside workshops.`
+              ) : mode === "forgot" ? (
+                "Enter your registered mobile number or email to receive a reset code."
+              ) : (
+                "Enter the 4-digit reset code from your backend console and a new password."
+              )}
             </p>
 
             <form onSubmit={handleSubmit}>
-              {/* Phone Input */}
-              <div className="mb-4">
-                <label className="block text-[12px] font-semibold text-gray-500 mb-2 tracking-wide">
-                  Mobile Number
-                </label>
-                <div className="flex rounded-xl overflow-hidden" style={{ border: "1.5px solid #e5e7eb" }}>
-                  <div className="flex items-center justify-center bg-gray-50 text-[15px] font-semibold text-gray-700 select-none"
-                    style={{ padding: "0 14px", borderRight: "1.5px solid #e5e7eb", flexShrink: 0, minWidth: 60 }}>
-                    +91
+              {/* Phone/Email Input */}
+              {mode !== "reset" && (
+                <div className="mb-4">
+                  <label className="block text-[12px] font-semibold text-gray-500 mb-2 tracking-wide">
+                    {mode === "forgot" ? "Mobile Number or Email" : "Mobile Number"}
+                  </label>
+                  <div className="flex rounded-xl overflow-hidden" style={{ border: "1.5px solid #e5e7eb" }}>
+                    {(mode === "login" || mode === "register") && (
+                      <div className="flex items-center justify-center bg-gray-50 text-[15px] font-semibold text-gray-700 select-none"
+                        style={{ padding: "0 14px", borderRight: "1.5px solid #e5e7eb", flexShrink: 0, minWidth: 60 }}>
+                        +91
+                      </div>
+                    )}
+                    <input
+                      className="flex-1 outline-none text-[16px] font-medium text-gray-900 bg-white placeholder-gray-300"
+                      style={{ padding: "13px 16px", border: "none", letterSpacing: mode === "forgot" ? 0 : 1, minWidth: 0 }}
+                      type={mode === "forgot" ? "text" : "tel"}
+                      placeholder={mode === "forgot" ? "Enter phone or email" : "Enter 10-digit number"}
+                      value={phone}
+                      onChange={(e) => { 
+                        if (mode === "forgot") {
+                          setPhone(e.target.value);
+                        } else {
+                          setPhone(e.target.value.replace(/\D/g, "").slice(0, 10)); 
+                        }
+                        setError(""); 
+                      }}
+                      required
+                    />
                   </div>
-                  <input
-                    className="flex-1 outline-none text-[16px] font-medium text-gray-900 bg-white placeholder-gray-300"
-                    style={{ padding: "13px 16px", border: "none", letterSpacing: 1, minWidth: 0 }}
-                    type="tel"
-                    inputMode="numeric"
-                    maxLength={10}
-                    placeholder="Enter 10-digit number"
-                    value={phone}
-                    onChange={(e) => { setPhone(e.target.value.replace(/\D/g, "").slice(0, 10)); setError(""); }}
-                    required
-                  />
                 </div>
-              </div>
+              )}
+
+              {/* Email Input (Register Only) */}
+              {mode === "register" && (
+                <div className="mb-4">
+                  <label className="block text-[12px] font-semibold text-gray-500 mb-2 tracking-wide">
+                    Email Address
+                  </label>
+                  <div className="rounded-xl overflow-hidden" style={{ border: "1.5px solid #e5e7eb" }}>
+                    <input
+                      className="w-full outline-none text-[16px] font-medium text-gray-900 bg-white placeholder-gray-300"
+                      style={{ padding: "13px 16px", border: "none", boxSizing: "border-box" }}
+                      type="email"
+                      placeholder="Enter your email"
+                      value={email}
+                      onChange={(e) => { setEmail(e.target.value); setError(""); }}
+                      required
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Reset Code Input */}
+              {mode === "reset" && (
+                <div className="mb-4">
+                  <label className="block text-[12px] font-semibold text-gray-500 mb-2 tracking-wide">
+                    4-Digit Reset Code
+                  </label>
+                  <div className="rounded-xl overflow-hidden" style={{ border: "1.5px solid #e5e7eb" }}>
+                    <input
+                      className="w-full outline-none text-[16px] font-medium text-gray-900 bg-white placeholder-gray-300"
+                      style={{ padding: "13px 16px", border: "none", boxSizing: "border-box", letterSpacing: 2 }}
+                      type="text"
+                      maxLength={4}
+                      placeholder="e.g. 1234"
+                      value={resetCode}
+                      onChange={(e) => { setResetCode(e.target.value.replace(/\D/g, "")); setError(""); }}
+                      required
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Password Input */}
-              <div className="mb-5">
-                <label className="block text-[12px] font-semibold text-gray-500 mb-2 tracking-wide">
-                  Password
-                </label>
-                <div className="rounded-xl overflow-hidden" style={{ border: "1.5px solid #e5e7eb" }}>
-                  <input
-                    className="w-full outline-none text-[16px] font-medium text-gray-900 bg-white placeholder-gray-300"
-                    style={{ padding: "13px 16px", border: "none", boxSizing: "border-box" }}
-                    type="password"
-                    placeholder="Enter password (min 6 chars)"
-                    value={password}
-                    onChange={(e) => { setPassword(e.target.value); setError(""); }}
-                    required
-                  />
+              {(mode === "login" || mode === "register" || mode === "reset") && (
+                <div className="mb-5">
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                    <label className="block text-[12px] font-semibold text-gray-500 mb-2 tracking-wide">
+                      {mode === "reset" ? "New Password" : "Password"}
+                    </label>
+                    {mode === "login" && (
+                      <span 
+                        onClick={() => { setMode("forgot"); setError(""); setPhone(""); }}
+                        style={{ fontSize: 12, fontWeight: 600, color: "#b91c1c", cursor: "pointer" }}
+                      >
+                        Forgot Password?
+                      </span>
+                    )}
+                  </div>
+                  <div className="rounded-xl overflow-hidden" style={{ border: "1.5px solid #e5e7eb" }}>
+                    <input
+                      className="w-full outline-none text-[16px] font-medium text-gray-900 bg-white placeholder-gray-300"
+                      style={{ padding: "13px 16px", border: "none", boxSizing: "border-box" }}
+                      type="password"
+                      placeholder="Enter password (min 6 chars)"
+                      value={mode === "reset" ? newPassword : password}
+                      onChange={(e) => { 
+                        if (mode === "reset") setNewPassword(e.target.value); 
+                        else setPassword(e.target.value); 
+                        setError(""); 
+                      }}
+                      required
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Error Alert */}
               {error && (
@@ -227,10 +352,27 @@ function LoginContent() {
                   <span className="w-5 h-5 border-[2.5px] border-white/40 border-t-white rounded-full animate-spin-btn inline-block" />
                 ) : mode === "login" ? (
                   "SIGN IN"
-                ) : (
+                ) : mode === "register" ? (
                   "CREATE ACCOUNT"
+                ) : mode === "forgot" ? (
+                  "SEND RESET CODE"
+                ) : (
+                  "RESET PASSWORD"
                 )}
               </button>
+
+              {/* Back to Login */}
+              {(mode === "forgot" || mode === "reset") && (
+                <div style={{ textAlign: "center", marginTop: 16 }}>
+                  <button 
+                    type="button" 
+                    onClick={() => { setMode("login"); setError(""); }}
+                    style={{ background: "none", border: "none", color: "#6b7280", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4 }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>arrow_back</span> Back to Login
+                  </button>
+                </div>
+              )}
             </form>
 
             <div style={{ marginTop: 24, borderTop: "1px solid #f3f4f6", paddingTop: 16, textAlign: "center" }}>

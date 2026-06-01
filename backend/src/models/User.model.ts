@@ -9,6 +9,7 @@ export interface IUser extends Document {
   avatar?: string;
   isProfileComplete: boolean;
   isActive: boolean;
+  approvalStatus: "pending" | "approved" | "rejected";
   mechanic?: any;
   createdAt: Date;
   updatedAt: Date;
@@ -50,6 +51,11 @@ const userSchema = new Schema<IUser>(
     isActive: {
       type: Boolean,
       default: true,
+    },
+    approvalStatus: {
+      type: String,
+      enum: ["pending", "approved", "rejected"],
+      default: "approved",
     },
     mechanic: {
       type: Schema.Types.ObjectId,

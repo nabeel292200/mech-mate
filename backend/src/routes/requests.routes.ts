@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import ServiceRequest from "../models/ServiceRequest.model";
 import User from "../models/User.model";
+import Message from "../models/Message.model";
 
 const router = Router();
 
@@ -54,6 +55,19 @@ router.post("/:id/pay", async (req: Request, res: Response) => {
     await request.save();
 
     res.json({ success: true, data: request, message: "Payment processed successfully" });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Get chat history for a request
+router.get("/:id/chat", async (req: Request, res: Response) => {
+  try {
+    const messages = await Message.find({ requestId: req.params.id })
+      .populate("senderId", "name avatar role")
+      .sort({ createdAt: 1 });
+      
+    res.json({ success: true, data: messages });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

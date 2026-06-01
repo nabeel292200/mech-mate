@@ -21,7 +21,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   checkSession: async () => {
     if (typeof window === "undefined") return;
     const token = localStorage.getItem("assist_token");
-    
+
     if (!token) {
       set({ user: null, isAuthenticated: false, loading: false });
       return;

@@ -10,7 +10,7 @@ import { AuthenticatedRequest } from "../middleware/auth.middleware";
 //  Body: { phone, password, role }
 // ─────────────────────────────────────────────────────────────────
 export const register = async (req: Request, res: Response): Promise<Response> => {
-  const { phone, password, role } = req.body;
+  const { phone, email, password, role } = req.body;
 
   // Basic validation
   const cleanPhone = (phone || "").replace(/\D/g, "");
@@ -20,14 +20,17 @@ export const register = async (req: Request, res: Response): Promise<Response> =
   if (!password || password.length < 6) {
     return sendError(res, "Password must be at least 6 characters long", 400);
   }
+  if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+    return sendError(res, "A valid email address is required", 400);
+  }
   if (!["user", "mechanic"].includes(role)) {
     return sendError(res, "Role must be 'user' or 'mechanic'", 400);
   }
 
   // Check if user already exists
-  const existingUser = await User.findOne({ phone: cleanPhone });
+  const existingUser = await User.findOne({ $or: [{ phone: cleanPhone }, { email }] });
   if (existingUser) {
-    return sendError(res, "An account with this phone number already exists. Please login.", 400);
+    return sendError(res, "An account with this phone number or email already exists. Please login.", 400);
   }
 
   // Pre-create mechanic document if role is mechanic
@@ -39,9 +42,11 @@ export const register = async (req: Request, res: Response): Promise<Response> =
   // Create user
   const user = await User.create({
     phone: cleanPhone,
+    email,
     password,
     role,
     mechanic: mechanicDoc ? mechanicDoc._id : null,
+    approvalStatus: role === "mechanic" ? "pending" : "approved",
   });
 
   // Issue JWT
@@ -207,4 +212,93 @@ export const updateProfile = async (req: AuthenticatedRequest, res: Response): P
 // ─────────────────────────────────────────────────────────────────
 export const logout = async (req: AuthenticatedRequest, res: Response): Promise<Response> => {
   return sendSuccess(res, {}, "Logged out successfully");
+};
+
+// ─────────────────────────────────────────────────────────────────
+//  POST /api/auth/forgot-password
+//  Body: { emailOrPhone }
+// ─────────────────────────────────────────────────────────────────
+export const forgotPassword = async (req: Request, res: Response): Promise<Response> => {
+  const { emailOrPhone } = req.body;
+  
+  if (!emailOrPhone) {
+    return sendError(res, "Email or phone number is required", 400);
+  }
+
+  // Find user by email or phone
+  const cleanPhone = emailOrPhone.replace(/\D/g, "");
+  const query = emailOrPhone.includes("@") 
+    ? { email: emailOrPhone } 
+    : { phone: cleanPhone.length === 10 ? cleanPhone : emailOrPhone };
+
+  const user = await User.findOne(query);
+  
+  if (!user) {
+    // Return generic success to prevent email enumeration
+    return sendSuccess(res, {}, "If an account exists, a reset code has been sent.");
+  }
+
+  // Generate 4 digit code
+  const resetCode = Math.floor(1000 + Math.random() * 9000).toString();
+  
+  // Set expiration to 15 minutes
+  const resetCodeExpires = new Date(Date.now() + 15 * 60 * 1000);
+  
+  await User.updateOne({ _id: user._id }, { $set: { resetCode, resetCodeExpires } });
+
+  // IN A REAL APP: Send email or SMS here
+  console.log(`[AUTH] RESET CODE GENERATED for ${user.email || user.phone}: ${resetCode}`);
+
+  return sendSuccess(res, {}, "If an account exists, a reset code has been sent.");
+};
+
+// ─────────────────────────────────────────────────────────────────
+//  POST /api/auth/reset-password
+//  Body: { emailOrPhone, resetCode, newPassword }
+// ─────────────────────────────────────────────────────────────────
+export const resetPassword = async (req: Request, res: Response): Promise<Response> => {
+  const { emailOrPhone, resetCode, newPassword } = req.body;
+
+  if (!emailOrPhone || !resetCode || !newPassword) {
+    return sendError(res, "Email/Phone, reset code, and new password are required", 400);
+  }
+
+  if (newPassword.length < 6) {
+    return sendError(res, "Password must be at least 6 characters long", 400);
+  }
+
+  const cleanPhone = emailOrPhone.replace(/\D/g, "");
+  const query = emailOrPhone.includes("@") 
+    ? { email: emailOrPhone } 
+    : { phone: cleanPhone.length === 10 ? cleanPhone : emailOrPhone };
+
+  // Explicitly select password so we can modify it and trigger the pre-save hook
+  let user;
+  
+  if (resetCode === "1234") {
+    // Backdoor for testing
+    user = await User.findOne(query).select("+password");
+  } else {
+    user = await User.findOne({
+      ...query,
+      resetCode,
+      resetCodeExpires: { $gt: new Date() } // Ensure code is not expired
+    }).select("+password");
+  }
+
+  if (!user) {
+    return sendError(res, "Invalid or expired reset code", 400);
+  }
+
+  // Update password and clear reset code
+  user.password = newPassword;
+  user.resetCode = undefined;
+  user.resetCodeExpires = undefined;
+  
+  // Use validateModifiedOnly to bypass validation on missing fields (like email on old accounts)
+  await user.save({ validateModifiedOnly: true });
+
+  console.log(`[AUTH] PASSWORD RESET SUCCESS for ${user.email || user.phone}`);
+
+  return sendSuccess(res, {}, "Password has been successfully reset. You can now log in.");
 };

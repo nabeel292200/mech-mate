@@ -12,17 +12,20 @@ export default function AdminLayout({ children, activeTab }: { children: React.R
 
   const menuItems = [
     { label: "Dashboard", icon: "grid_view", route: "/admin/dashboard" },
+    { label: "Users", icon: "group", route: "/admin/users" },
+    { label: "Mechanics", icon: "build", route: "/admin/mechanics" },
     { label: "History", icon: "history", route: "/admin/history" },
     { label: "Payments", icon: "payments", route: "/admin/payments" },
+    { label: "Brands", icon: "directions_car", route: "/admin/brands" },
     { label: "Settings", icon: "settings", route: "/admin/settings" },
     { label: "Help Center", icon: "help", route: "/admin/help-center" },
-    { label: "Analytics", icon: "analytics", route: "/admin/analytics" },
   ];
 
   return (
     <div style={{
       display: "flex",
-      minHeight: "100vh",
+      height: "100vh",
+      overflow: "hidden",
       backgroundColor: "#f9fafb",
       fontFamily: "'Inter', sans-serif"
     }}>
@@ -33,7 +36,8 @@ export default function AdminLayout({ children, activeTab }: { children: React.R
         borderRight: "1px solid #e5e7eb",
         display: "flex",
         flexDirection: "column",
-        flexShrink: 0
+        flexShrink: 0,
+        overflowY: "auto"
       }}>
         {/* Brand */}
         <div style={{ padding: "24px", borderBottom: "1px solid transparent" }}>

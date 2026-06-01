@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import AdminLayout from "../../../src/components/AdminLayout";
+import { api } from "../../../src/services/api.service";
 
 export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
@@ -10,7 +11,8 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch("http://localhost:4000/api/admin/dashboard-stats"); // Backend on 4000
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
+        const res = await fetch(`${apiUrl}/admin/dashboard-stats`); // Backend on 4000
         const json = await res.json();
         if (json.success) {
           setData(json.data);
@@ -25,6 +27,22 @@ export default function AdminDashboardPage() {
     };
     fetchData();
   }, []);
+
+  const handleUpdateStatus = async (id: string, updates: { approvalStatus?: string; isActive?: boolean }) => {
+    try {
+      const res = await api.put<{ success: boolean; data: any }>(`admin/mechanics/${id}/status`, updates);
+      if (res.success) {
+        // Remove from pending list
+        setData((prev: any) => ({
+          ...prev,
+          pendingApprovals: prev.pendingApprovals.filter((m: any) => m._id !== id)
+        }));
+      }
+    } catch (error) {
+      console.error("Failed to update status", error);
+      alert("Error updating status. Please try again.");
+    }
+  };
 
   if (loading) {
     return (
@@ -196,10 +214,10 @@ export default function AdminDashboardPage() {
                 </td>
                 <td style={{ padding: "16px 20px" }}>
                   <div style={{ display: "flex", gap: 12 }}>
-                    <button style={{ background: "none", border: "none", color: "#b91c1c", cursor: "pointer", display: "flex", alignItems: "center" }}>
+                    <button onClick={() => handleUpdateStatus(row._id, { approvalStatus: "approved", isActive: true })} style={{ background: "none", border: "none", color: "#16a34a", cursor: "pointer", display: "flex", alignItems: "center" }} title="Accept">
                       <span className="material-symbols-outlined" style={{ fontSize: 20 }}>check_circle</span>
                     </button>
-                    <button style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center" }}>
+                    <button onClick={() => handleUpdateStatus(row._id, { approvalStatus: "rejected", isActive: false })} style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", display: "flex", alignItems: "center" }} title="Reject">
                       <span className="material-symbols-outlined" style={{ fontSize: 20 }}>cancel</span>
                     </button>
                   </div>

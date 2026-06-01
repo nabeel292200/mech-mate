@@ -1,15 +1,43 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import AdminLayout from "../../../src/components/AdminLayout";
+import { api } from "../../../src/services/api.service";
 
 export default function AdminHistoryPage() {
-  // Placeholder data for history
-  const historyData = [
-    { id: "SR-9012", date: "2024-05-28", user: "John Doe", mechanic: "Mike Smith", status: "Completed", amount: "$120.00" },
-    { id: "SR-9013", date: "2024-05-27", user: "Sarah Connor", mechanic: "Alex Johnson", status: "Completed", amount: "$85.00" },
-    { id: "SR-9014", date: "2024-05-26", user: "Bruce Wayne", mechanic: "Clark Kent", status: "Cancelled", amount: "$0.00" },
-  ];
+  const [historyData, setHistoryData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
+  useEffect(() => {
+    fetchHistory(page);
+  }, [page]);
+
+  const fetchHistory = async (pageNum: number) => {
+    setLoading(true);
+    try {
+      const res = await api.get<{ success: boolean; data: any }>(`admin/history?page=${pageNum}&limit=10`);
+      if (res.success) {
+        setHistoryData(res.data.items || []);
+        setTotalPages(res.data.totalPages || 1);
+      }
+    } catch (error) {
+      console.error("Failed to fetch history", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading && page === 1) {
+    return (
+      <AdminLayout activeTab="History">
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "60vh" }}>
+          <h2 style={{ color: "#b91c1c" }}>Loading History...</h2>
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout activeTab="History">
@@ -43,20 +71,57 @@ export default function AdminHistoryPage() {
             </tr>
           </thead>
           <tbody>
-            {historyData.map((row, i) => (
+            {historyData.length > 0 ? historyData.map((row: any, i: number) => (
               <tr key={i} style={{ borderBottom: "1px solid #e5e7eb" }}>
                 <td style={{ padding: "16px 20px", fontSize: 14, fontWeight: 700, color: "#111827" }}>{row.id}</td>
                 <td style={{ padding: "16px 20px", fontSize: 14, color: "#4b5563" }}>{row.date}</td>
                 <td style={{ padding: "16px 20px", fontSize: 14, color: "#4b5563", fontWeight: 600 }}>{row.user}</td>
                 <td style={{ padding: "16px 20px", fontSize: 14, color: "#4b5563" }}>{row.mechanic}</td>
                 <td style={{ padding: "16px 20px" }}>
-                  <span style={{ backgroundColor: row.status === "Completed" ? "#dcfce7" : "#fee2e2", color: row.status === "Completed" ? "#16a34a" : "#dc2626", fontSize: 11, fontWeight: 700, padding: "4px 8px", borderRadius: 4 }}>{row.status}</span>
+                  <span style={{ 
+                    backgroundColor: row.status === "Completed" ? "#dcfce7" : row.status === "Cancelled" ? "#fee2e2" : "#ffedd5", 
+                    color: row.status === "Completed" ? "#16a34a" : row.status === "Cancelled" ? "#dc2626" : "#c2410c", 
+                    fontSize: 11, fontWeight: 700, padding: "4px 8px", borderRadius: 4 
+                  }}>
+                    {row.status}
+                  </span>
                 </td>
                 <td style={{ padding: "16px 20px", fontSize: 14, fontWeight: 600, color: "#111827" }}>{row.amount}</td>
               </tr>
-            ))}
+            )) : (
+              <tr>
+                <td colSpan={6} style={{ padding: "20px", textAlign: "center", color: "#6b7280", fontSize: 14 }}>
+                  No history found.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 24, paddingTop: 16, borderTop: "1px solid #e5e7eb" }}>
+            <span style={{ fontSize: 13, color: "#6b7280" }}>
+              Page {page} of {totalPages}
+            </span>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button 
+                onClick={() => setPage(Math.max(1, page - 1))}
+                disabled={page === 1}
+                style={{ padding: "6px 12px", borderRadius: 6, border: "1px solid #d1d5db", backgroundColor: page === 1 ? "#f3f4f6" : "#fff", color: page === 1 ? "#9ca3af" : "#374151", fontSize: 13, fontWeight: 600, cursor: page === 1 ? "not-allowed" : "pointer" }}
+              >
+                Previous
+              </button>
+              <button 
+                onClick={() => setPage(Math.min(totalPages, page + 1))}
+                disabled={page === totalPages}
+                style={{ padding: "6px 12px", borderRadius: 6, border: "1px solid #d1d5db", backgroundColor: page === totalPages ? "#f3f4f6" : "#fff", color: page === totalPages ? "#9ca3af" : "#374151", fontSize: 13, fontWeight: 600, cursor: page === totalPages ? "not-allowed" : "pointer" }}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </AdminLayout>
   );

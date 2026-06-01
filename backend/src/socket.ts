@@ -113,6 +113,34 @@ export const initSocket = (httpServer: HttpServer) => {
       io.emit("payment_completed", data);
     });
 
+    // Chat System Handlers
+    socket.on("join_chat", (data: { requestId: string }) => {
+      socket.join(data.requestId);
+      console.log(`Socket ${socket.id} joined chat room: ${data.requestId}`);
+    });
+
+    socket.on("send_message", async (data: { requestId: string, senderId: string, senderRole: "user" | "mechanic", text: string }) => {
+      try {
+        const Message = require("./models/Message.model").default;
+        
+        // Save to DB
+        const newMessage = await Message.create({
+          requestId: data.requestId,
+          senderId: data.senderId,
+          senderRole: data.senderRole,
+          text: data.text
+        });
+
+        // Populate sender info before emitting
+        await newMessage.populate("senderId", "name avatar role");
+
+        // Broadcast to everyone in the room (including sender)
+        io.to(data.requestId).emit("receive_message", newMessage);
+      } catch (error) {
+        console.error("Error sending message:", error);
+      }
+    });
+
     socket.on("disconnect", () => {
       connectedMechanics.delete(socket.id);
       console.log(`Socket Disconnected: ${socket.id}`);

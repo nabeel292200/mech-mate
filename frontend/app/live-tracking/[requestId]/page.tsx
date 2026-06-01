@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { getSocket } from "../../../src/services/socket";
+import { useAuthStore } from "../../../src/store/authStore";
 
 // Prevent server-side rendering of Leaflet which depends on the window object
 const MapComponent = dynamic(() => import("../../../src/components/MapComponent"), { ssr: false });
@@ -18,6 +19,14 @@ export default function LiveTrackingPage() {
   const [mechanicLocation, setMechanicLocation] = useState<{ lat: number, lng: number } | null>(null);
   const [showRejectionModal, setShowRejectionModal] = useState(false);
   const [requestData, setRequestData] = useState<any>(null);
+  
+  const user = useAuthStore((state) => state.user);
+
+  // Chat States
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [newMessage, setNewMessage] = useState("");
+  const messagesEndRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchRequest = async () => {
@@ -31,10 +40,33 @@ export default function LiveTrackingPage() {
         console.error("Failed to fetch request data:", err);
       }
     };
-    if (requestId) fetchRequest();
+    
+    const fetchChatHistory = async () => {
+      try {
+        const { api } = require("../../../src/services/api.service");
+        const res = await api.get(`requests/${requestId}/chat`);
+        if (res.success) {
+          setMessages(res.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch chat history:", err);
+      }
+    };
+
+    if (requestId) {
+      fetchRequest();
+      fetchChatHistory();
+    }
   }, [requestId]);
 
-  // 1. Listen for incoming location updates from the other person
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    if (isChatOpen) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, isChatOpen]);
+
+  // 1. Listen for incoming socket events
   useEffect(() => {
     const socket = getSocket();
 
@@ -57,14 +89,23 @@ export default function LiveTrackingPage() {
       }
     };
 
+    const handleReceiveMessage = (msg: any) => {
+      if (msg.requestId === requestId) {
+        setMessages((prev) => [...prev, msg]);
+      }
+    };
+
+    socket.emit("join_chat", { requestId });
     socket.on("location_update", handleLocationUpdate);
     socket.on("mechanic_arrived", handleMechanicArrived);
     socket.on("request_rejected", handleRequestRejected);
+    socket.on("receive_message", handleReceiveMessage);
 
     return () => {
       socket.off("location_update", handleLocationUpdate);
       socket.off("mechanic_arrived", handleMechanicArrived);
       socket.off("request_rejected", handleRequestRejected);
+      socket.off("receive_message", handleReceiveMessage);
     };
   }, [requestId, role, router]);
 
@@ -102,6 +143,97 @@ export default function LiveTrackingPage() {
       if (watchId) navigator.geolocation.clearWatch(watchId);
     };
   }, [requestId, role]);
+
+  const handleSendMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMessage.trim() || !requestData) return;
+
+    let finalSenderId = user?._id || user?.id;
+    if (!finalSenderId) {
+      // Fallback if not logged in (e.g., testing via direct URL)
+      if (role === "mechanic") {
+        finalSenderId = requestData?.mechanicUser?._id;
+      } else {
+        finalSenderId = requestData?.userId?._id || requestData?.userId;
+      }
+    }
+
+    if (!finalSenderId) return;
+
+    const socket = getSocket();
+
+    socket.emit("send_message", {
+      requestId,
+      senderId: finalSenderId,
+      senderRole: role,
+      text: newMessage.trim(),
+    });
+
+    setNewMessage("");
+  };
+
+  const renderChatOverlay = () => {
+    if (!isChatOpen) return null;
+
+    let currentUserId = user?._id || user?.id;
+    if (!currentUserId) {
+      currentUserId = role === "mechanic" ? requestData?.mechanicUser?._id : (requestData?.userId?._id || requestData?.userId);
+    }
+
+    return (
+      <div className="fixed inset-0 bg-black/40 z-[1000] flex flex-col justify-end">
+        <div className="bg-white rounded-t-3xl h-[75vh] flex flex-col overflow-hidden shadow-2xl animate-in slide-in-from-bottom">
+          {/* Chat Header */}
+          <div className="px-6 py-4 border-b border-neutral-100 flex justify-between items-center bg-white z-10">
+            <h2 className="text-[18px] font-black text-neutral-900">
+              {role === "mechanic" ? requestData?.userId?.name || "Customer" : requestData?.mechanicUser?.name || "Mechanic"}
+            </h2>
+            <button onClick={() => setIsChatOpen(false)} className="text-neutral-400 hover:text-neutral-900">
+              <span className="material-symbols-outlined text-[24px]">close</span>
+            </button>
+          </div>
+          
+          {/* Messages Area */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#f8f9fa]">
+            {messages.map((msg, idx) => {
+              const isMe = msg.senderId?._id === currentUserId || msg.senderRole === role;
+              return (
+                <div key={idx} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
+                  <div className={`max-w-[80%] rounded-2xl px-4 py-2 ${isMe ? "bg-[#b91c1c] text-white rounded-tr-sm" : "bg-white border border-neutral-200 text-neutral-800 rounded-tl-sm shadow-sm"}`}>
+                    <p className="text-[14px] leading-relaxed break-words">{msg.text}</p>
+                    <p className={`text-[9px] mt-1 text-right ${isMe ? "text-white/70" : "text-neutral-400"}`}>
+                      {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+            <div ref={messagesEndRef} />
+          </div>
+          
+          {/* Input Area */}
+          <div className="p-4 bg-white border-t border-neutral-100">
+            <form onSubmit={handleSendMessage} className="flex gap-2">
+              <input
+                type="text"
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                placeholder="Type a message..."
+                className="flex-1 bg-[#f3f4f6] border-none rounded-xl px-4 py-3 text-[14px] outline-none focus:ring-2 focus:ring-[#b91c1c]/20"
+              />
+              <button 
+                type="submit" 
+                disabled={!newMessage.trim()}
+                className="w-12 h-12 bg-[#b91c1c] disabled:bg-neutral-300 text-white rounded-xl flex items-center justify-center transition-colors"
+              >
+                <span className="material-symbols-outlined text-[20px]">send</span>
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   // ==========================================
   // MECHANIC VIEW UI
@@ -197,13 +329,17 @@ export default function LiveTrackingPage() {
               <span className="material-symbols-outlined text-[18px]">navigation</span>
               START NAVIGATION
             </button>
-            <button className="w-full bg-white border border-[#a31621] text-[#a31621] hover:bg-red-50 py-3.5 rounded-[12px] font-bold text-[12px] tracking-wide flex items-center justify-center gap-2 transition-all shadow-sm">
+            <button 
+              onClick={() => setIsChatOpen(true)}
+              className="w-full bg-white border border-[#a31621] text-[#a31621] hover:bg-red-50 py-3.5 rounded-[12px] font-bold text-[12px] tracking-wide flex items-center justify-center gap-2 transition-all shadow-sm"
+            >
               <span className="material-symbols-outlined text-[18px]">chat_bubble</span>
               CONTACT CUSTOMER
             </button>
           </div>
 
         </div>
+        {renderChatOverlay()}
       </div>
     );
   }
@@ -285,7 +421,10 @@ export default function LiveTrackingPage() {
             <span className="material-symbols-outlined text-[18px]">call</span>
             CALL
           </button>
-          <button className="flex-1 bg-white border border-[#a31621] text-[#a31621] hover:bg-red-50 py-3.5 rounded-[12px] font-bold text-[13px] tracking-wide flex items-center justify-center gap-2 transition-all">
+          <button 
+            onClick={() => setIsChatOpen(true)}
+            className="flex-1 bg-white border border-[#a31621] text-[#a31621] hover:bg-red-50 py-3.5 rounded-[12px] font-bold text-[13px] tracking-wide flex items-center justify-center gap-2 transition-all"
+          >
             <span className="material-symbols-outlined text-[18px]">chat_bubble</span>
             MESSAGE
           </button>
@@ -327,6 +466,8 @@ export default function LiveTrackingPage() {
           </div>
         </div>
       )}
+
+      {renderChatOverlay()}
 
     </div>
   );
