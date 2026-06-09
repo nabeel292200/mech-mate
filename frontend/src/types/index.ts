@@ -1,9 +1,10 @@
 export interface IUser {
   _id?: string;
   id: string;
-  phone: string;
+  phone?: string;
+  email?: string;
   name: string;
-  role: "user" | "mechanic";
+  role: "user" | "admin" | "mechanic";
   isProfileComplete: boolean;
   mechanic?: {
     _id?: string;
@@ -12,6 +13,7 @@ export interface IUser {
     workshopAddress: string;
     vehicleSkills: string[];
     brandExpertise: string[];
+    specialistSkills: string[];
     isAvailable: boolean;
     liveLocation: boolean;
     rating: number;
@@ -24,7 +26,7 @@ export interface AuthResponse {
   message?: string;
   data: {
     token: string;
-    role: "user" | "mechanic";
+    role: "user" | "admin" | "mechanic";
     isProfileComplete: boolean;
     user: IUser;
   };

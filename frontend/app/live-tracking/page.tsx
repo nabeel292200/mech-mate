@@ -1,25 +1,35 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useParams, useSearchParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { getSocket } from "../../../src/services/socket";
-import { useAuthStore } from "../../../src/store/authStore";
+import { getSocket } from "../../src/services/socket";
+import { useAuthStore } from "../../src/store/authStore";
 
 // Prevent server-side rendering of Leaflet which depends on the window object
-const MapComponent = dynamic(() => import("../../../src/components/MapComponent"), { ssr: false });
+const MapComponent = dynamic(() => import("../../src/components/MapComponent"), { ssr: false });
 
 export default function LiveTrackingPage() {
-  const { requestId } = useParams();
-  const searchParams = useSearchParams();
   const router = useRouter();
-  const role = searchParams.get("role") || "user"; // "user" or "mechanic"
+  const [requestId, setRequestId] = useState<string | null>(null);
+  const [role, setRole] = useState<string>("user");
+
+  useEffect(() => {
+    const activeId = localStorage.getItem("activeRequestId");
+    const activeRole = localStorage.getItem("activeRole") || "user";
+    if (!activeId) {
+      router.push("/");
+    } else {
+      setRequestId(activeId);
+      setRole(activeRole);
+    }
+  }, [router]);
 
   const [userLocation, setUserLocation] = useState<{ lat: number, lng: number } | null>(null);
   const [mechanicLocation, setMechanicLocation] = useState<{ lat: number, lng: number } | null>(null);
   const [showRejectionModal, setShowRejectionModal] = useState(false);
   const [requestData, setRequestData] = useState<any>(null);
-  
+
   const user = useAuthStore((state) => state.user);
 
   // Chat States
@@ -29,9 +39,10 @@ export default function LiveTrackingPage() {
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!requestId) return;
     const fetchRequest = async () => {
       try {
-        const { api } = require("../../../src/services/api.service");
+        const { api } = require("../../src/services/api.service");
         const res = await api.get(`requests/${requestId}`);
         if (res.success) {
           setRequestData(res.data);
@@ -40,10 +51,10 @@ export default function LiveTrackingPage() {
         console.error("Failed to fetch request data:", err);
       }
     };
-    
+
     const fetchChatHistory = async () => {
       try {
-        const { api } = require("../../../src/services/api.service");
+        const { api } = require("../../src/services/api.service");
         const res = await api.get(`requests/${requestId}/chat`);
         if (res.success) {
           setMessages(res.data);
@@ -68,6 +79,7 @@ export default function LiveTrackingPage() {
 
   // 1. Listen for incoming socket events
   useEffect(() => {
+    if (!requestId) return;
     const socket = getSocket();
 
     const handleLocationUpdate = (data: any) => {
@@ -79,7 +91,7 @@ export default function LiveTrackingPage() {
 
     const handleMechanicArrived = (data: any) => {
       if (data.requestId === requestId && role === "user") {
-        router.push(`/service-progress/${requestId}`);
+        router.push(`/service-progress`);
       }
     };
 
@@ -111,6 +123,7 @@ export default function LiveTrackingPage() {
 
   // 2. Continuously watch OUR location and broadcast it
   useEffect(() => {
+    if (!requestId) return;
     let watchId: number;
 
     if (navigator.geolocation) {
@@ -192,7 +205,7 @@ export default function LiveTrackingPage() {
               <span className="material-symbols-outlined text-[24px]">close</span>
             </button>
           </div>
-          
+
           {/* Messages Area */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#f8f9fa]">
             {messages.map((msg, idx) => {
@@ -210,7 +223,7 @@ export default function LiveTrackingPage() {
             })}
             <div ref={messagesEndRef} />
           </div>
-          
+
           {/* Input Area */}
           <div className="p-4 bg-white border-t border-neutral-100">
             <form onSubmit={handleSendMessage} className="flex gap-2">
@@ -221,8 +234,8 @@ export default function LiveTrackingPage() {
                 placeholder="Type a message..."
                 className="flex-1 bg-[#f3f4f6] border-none rounded-xl px-4 py-3 text-[14px] outline-none focus:ring-2 focus:ring-[#b91c1c]/20"
               />
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 disabled={!newMessage.trim()}
                 className="w-12 h-12 bg-[#b91c1c] disabled:bg-neutral-300 text-white rounded-xl flex items-center justify-center transition-colors"
               >
@@ -234,6 +247,17 @@ export default function LiveTrackingPage() {
       </div>
     );
   };
+
+  // ==========================================
+  // LOADING / NO ID STATE
+  // ==========================================
+  if (!requestId) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#f5f6f8]">
+        <div className="w-10 h-10 border-4 border-neutral-300 border-t-[#b91c1c] rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   // ==========================================
   // MECHANIC VIEW UI
@@ -256,9 +280,6 @@ export default function LiveTrackingPage() {
                 <p className="text-[11px] font-bold text-neutral-500 mt-0.5">Live Location</p>
               </div>
             </div>
-            <button className="w-10 h-10 bg-[#ffb067] hover:bg-orange-400 rounded-xl flex items-center justify-center text-white shadow-sm transition-colors shrink-0">
-              <span className="material-symbols-outlined text-[18px]">call</span>
-            </button>
           </div>
         </div>
 
@@ -319,7 +340,7 @@ export default function LiveTrackingPage() {
               onClick={() => {
                 const socket = getSocket();
                 socket.emit("mechanic_arrived", { requestId });
-                router.push(`/mechanic/billing/${requestId}`);
+                router.push(`/mechanic/billing`);
               }}
               className="w-full bg-[#059669] hover:bg-green-700 text-white py-3.5 rounded-[12px] font-bold text-[12px] tracking-wide flex items-center justify-center gap-2 transition-all shadow-[0_4px_12px_rgba(5,150,105,0.2)]">
               <span className="material-symbols-outlined text-[18px]">check_circle</span>
@@ -329,7 +350,7 @@ export default function LiveTrackingPage() {
               <span className="material-symbols-outlined text-[18px]">navigation</span>
               START NAVIGATION
             </button>
-            <button 
+            <button
               onClick={() => setIsChatOpen(true)}
               className="w-full bg-white border border-[#a31621] text-[#a31621] hover:bg-red-50 py-3.5 rounded-[12px] font-bold text-[12px] tracking-wide flex items-center justify-center gap-2 transition-all shadow-sm"
             >
@@ -416,14 +437,10 @@ export default function LiveTrackingPage() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-3 mb-6">
-          <button className="flex-1 bg-[#a31621] hover:bg-red-800 text-white py-3.5 rounded-[12px] font-bold text-[13px] tracking-wide flex items-center justify-center gap-2 transition-all shadow-sm">
-            <span className="material-symbols-outlined text-[18px]">call</span>
-            CALL
-          </button>
-          <button 
+        <div className="mb-6">
+          <button
             onClick={() => setIsChatOpen(true)}
-            className="flex-1 bg-white border border-[#a31621] text-[#a31621] hover:bg-red-50 py-3.5 rounded-[12px] font-bold text-[13px] tracking-wide flex items-center justify-center gap-2 transition-all"
+            className="w-full bg-[#a31621] hover:bg-red-800 text-white py-3.5 rounded-[12px] font-bold text-[13px] tracking-wide flex items-center justify-center gap-2 transition-all shadow-sm"
           >
             <span className="material-symbols-outlined text-[18px]">chat_bubble</span>
             MESSAGE
@@ -457,8 +474,8 @@ export default function LiveTrackingPage() {
             <p className="text-[14px] text-neutral-500 leading-relaxed mb-7">
               We're sorry, but the assigned mechanic is currently unable to accept this request. Please return to the home screen.
             </p>
-            <button 
-              onClick={() => { setShowRejectionModal(false); router.push("/"); }} 
+            <button
+              onClick={() => { setShowRejectionModal(false); router.push("/"); }}
               className="w-full bg-[#b91c1c] hover:bg-[#991b1b] text-white border-none rounded-xl py-4 text-[14px] font-extrabold cursor-pointer transition-colors"
             >
               OK, RETURN HOME

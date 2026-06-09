@@ -68,7 +68,7 @@ export default function Home() {
               <button
                 className="active:scale-95 transition-all duration-200"
                 style={{ background: "rgba(255,255,255,0.12)", color: "#fff", border: "2px solid rgba(255,255,255,0.6)", borderRadius: 8, padding: "14px 32px", fontSize: 13, fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase", cursor: "pointer", backdropFilter: "blur(8px)" }}
-                onClick={() => router.push("/login?role=mechanic")}
+                onClick={() => router.push("/admin/login?role=mechanic")}
                 onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.2)")}
                 onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.12)")}
               >I&apos;m a Mechanic</button>

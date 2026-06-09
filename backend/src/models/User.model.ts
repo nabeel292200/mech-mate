@@ -2,15 +2,18 @@ import mongoose, { Document, Schema } from "mongoose";
 import bcrypt from "bcryptjs";
 
 export interface IUser extends Document {
-  phone: string;
+  phone?: string;
+  email?: string;
   password?: string;
-  role: "user" | "mechanic";
+  role: "user" | "admin" | "mechanic";
   name: string;
   avatar?: string;
   isProfileComplete: boolean;
   isActive: boolean;
   approvalStatus: "pending" | "approved" | "rejected";
   mechanic?: any;
+  resetCode?: string;
+  resetCodeExpires?: Date;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidate: string): Promise<boolean>;
@@ -20,10 +23,18 @@ const userSchema = new Schema<IUser>(
   {
     phone: {
       type: String,
-      required: [true, "Phone number is required"],
       unique: true,
+      sparse: true,
       trim: true,
       match: [/^\d{10}$/, "Phone must be exactly 10 digits"],
+    },
+    email: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true,
+      lowercase: true,
+      match: [/^\S+@\S+\.\S+$/, "Please use a valid email address"],
     },
     password: {
       type: String,
@@ -32,7 +43,7 @@ const userSchema = new Schema<IUser>(
     },
     role: {
       type: String,
-      enum: ["user", "mechanic"],
+      enum: ["user", "admin", "mechanic"],
       required: [true, "Role is required"],
     },
     name: {
@@ -62,9 +73,26 @@ const userSchema = new Schema<IUser>(
       ref: "Mechanic",
       default: null,
     },
+    resetCode: {
+      type: String,
+    },
+    resetCodeExpires: {
+      type: Date,
+    },
   },
   { timestamps: true }
 );
+
+// Validate that either phone or email is present based on role
+userSchema.pre<IUser>("validate", function (next) {
+  if (this.role === "user" && !this.phone) {
+    next(new Error("Phone number is required for users"));
+  } else if ((this.role === "admin" || this.role === "mechanic") && !this.email) {
+    next(new Error("Email address is required for admins and mechanics"));
+  } else {
+    next();
+  }
+});
 
 // Hash password before saving
 userSchema.pre<IUser>("save", async function (next) {

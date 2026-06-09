@@ -4,6 +4,7 @@ export interface IServiceRequest extends Document {
   userId: string;
   mechanicId?: string;
   brandName: string;
+  specialistSkill?: string;
   problemDetails: string;
   userLocation: { lat: number; lng: number };
   status: "pending" | "accepted" | "invoiced" | "completed" | "cancelled";
@@ -18,6 +19,7 @@ const ServiceRequestSchema = new Schema(
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     mechanicId: { type: Schema.Types.ObjectId, ref: "Mechanic" },
     brandName: { type: String, required: true },
+    specialistSkill: { type: String },
     problemDetails: { type: String, required: true },
     userLocation: {
       lat: { type: Number, required: true },

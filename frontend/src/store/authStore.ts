@@ -6,8 +6,8 @@ interface AuthState {
   user: IUser | null;
   loading: boolean;
   isAuthenticated: boolean;
-  login: (phone: string, password: string) => Promise<AuthResponse["data"]>;
-  register: (phone: string, password: string, role: "user" | "mechanic") => Promise<AuthResponse["data"]>;
+  login: (emailOrPhone: string, password: string) => Promise<AuthResponse["data"]>;
+  register: (phone: string, email: string, password: string, role: "user" | "admin" | "mechanic") => Promise<AuthResponse["data"]>;
   logout: () => void;
   updateProfile: (profileData: Partial<IUser> & any) => Promise<void>;
   checkSession: () => Promise<void>;
@@ -42,16 +42,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  login: async (phone: string, password: string) => {
-    const res = await api.post<AuthResponse>("auth/login", { phone, password });
+  login: async (emailOrPhone: string, password: string) => {
+    const res = await api.post<AuthResponse>("auth/login", { emailOrPhone, password });
     localStorage.setItem("assist_token", res.data.token);
     localStorage.setItem("assist_role", res.data.role);
     set({ user: res.data.user, isAuthenticated: true });
     return res.data;
   },
 
-  register: async (phone: string, password: string, role: "user" | "mechanic") => {
-    const res = await api.post<AuthResponse>("auth/register", { phone, password, role });
+  register: async (phone: string, email: string, password: string, role: "user" | "admin" | "mechanic") => {
+    const res = await api.post<AuthResponse>("auth/register", { phone, email, password, role });
     localStorage.setItem("assist_token", res.data.token);
     localStorage.setItem("assist_role", res.data.role);
     set({ user: res.data.user, isAuthenticated: true });

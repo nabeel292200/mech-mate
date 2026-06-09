@@ -7,13 +7,45 @@ import mongoose from "mongoose";
 // Get pending requests (new requests waiting for any mechanic)
 export const getPendingRequests = async (req: Request, res: Response) => {
   try {
+    const mechData: any = (req as any).user?.mechanic;
+    const mechanicId = mechData?._id || mechData;
+    
+    let mechanic: any = null;
+    if (mechanicId) {
+      mechanic = await Mechanic.findById(mechanicId);
+    }
+
     const requests = await ServiceRequest.find({
       status: "pending"
     })
       .populate("userId", "name phone avatar")
       .sort({ createdAt: -1 });
 
-    res.json({ success: true, data: requests });
+    let filteredRequests = requests;
+    if (mechanic) {
+      filteredRequests = requests.filter(data => {
+        const hasSkill = mechanic.specialistSkills?.some((s: string) => {
+          if (!s || !data.specialistSkill) return false;
+          return s.toLowerCase() === data.specialistSkill.toLowerCase();
+        });
+        
+        const isCommonSkill = data.specialistSkill && [
+          "fuel delivery",
+          "tow service"
+        ].includes(data.specialistSkill.toLowerCase());
+
+        const hasBrand = mechanic.brandExpertise?.some((b: string) => {
+          if (!b || !data.brandName) return false;
+          const mechB = b.toLowerCase();
+          const reqB = data.brandName.toLowerCase();
+          return mechB === reqB || mechB.includes(reqB) || reqB.includes(mechB);
+        });
+
+        return hasSkill && (hasBrand || isCommonSkill);
+      });
+    }
+
+    res.json({ success: true, data: filteredRequests });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

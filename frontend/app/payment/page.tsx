@@ -1,13 +1,22 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { api } from "../../../src/services/api.service";
-import { getSocket } from "../../../src/services/socket";
+import { useRouter } from "next/navigation";
+import { api } from "../../src/services/api.service";
+import { getSocket } from "../../src/services/socket";
 
 export default function UserPaymentPage() {
-  const { requestId } = useParams();
   const router = useRouter();
+  const [requestId, setRequestId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const activeId = localStorage.getItem("activeRequestId");
+    if (!activeId) {
+      router.push("/");
+    } else {
+      setRequestId(activeId);
+    }
+  }, [router]);
 
   const [requestData, setRequestData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -51,7 +60,7 @@ export default function UserPaymentPage() {
     }
   };
 
-  if (loading) {
+  if (loading || !requestId) {
     return (
       <div className="min-h-screen bg-[#f8f9fa] flex items-center justify-center font-sans text-neutral-800">
         <span className="w-10 h-10 border-4 border-neutral-200 border-t-[#b91c1c] rounded-full animate-spin"></span>
@@ -84,7 +93,7 @@ export default function UserPaymentPage() {
 
       {/* Main Container */}
       <div className="max-w-[1000px] mx-auto px-6 mt-12">
-        
+
         {/* Success Header */}
         <div className="flex flex-col items-center justify-center mb-12">
           <div className="w-16 h-16 bg-[#dc2626] rounded-full flex items-center justify-center mb-5 shadow-[0_8px_20px_rgba(220,38,38,0.3)]">
@@ -96,15 +105,15 @@ export default function UserPaymentPage() {
 
         {/* Two Column Layout */}
         <div className="grid grid-cols-1 md:grid-cols-[1fr_420px] gap-8 items-start">
-          
+
           {/* Left Column: Summary & Mechanic */}
           <div className="flex flex-col gap-6">
-            
+
             {/* Service Summary Card */}
             <div>
               <p className="text-[12px] font-bold text-neutral-500 tracking-[0.1em] uppercase mb-3 ml-1">Service Summary</p>
               <div className="bg-white rounded-[16px] shadow-sm border border-neutral-100 p-8">
-                
+
                 <div className="flex flex-col gap-6">
                   {items.map((item: any, idx: number) => (
                     <div key={idx} className="flex justify-between items-start">
@@ -116,7 +125,7 @@ export default function UserPaymentPage() {
                       <p className="text-[16px] font-bold text-neutral-900">${Number(item.price).toFixed(2)}</p>
                     </div>
                   ))}
-                  
+
                   {items.length === 0 && (
                     <div className="text-neutral-500 text-sm italic">No line items specified.</div>
                   )}
@@ -154,11 +163,11 @@ export default function UserPaymentPage() {
           <div>
             <p className="text-[12px] font-bold text-neutral-500 tracking-[0.1em] uppercase mb-3 ml-1">Payment Method</p>
             <div className="bg-white rounded-[16px] shadow-sm border border-neutral-100 p-6">
-              
+
               <div className="flex flex-col gap-3 mb-8">
-                
+
                 {/* Visa Option */}
-                <button 
+                <button
                   onClick={() => setSelectedMethod("visa")}
                   className={`w-full flex items-center justify-between p-4 rounded-[12px] border-2 transition-all text-left ${selectedMethod === "visa" ? "border-[#b91c1c] bg-[#fef2f2]" : "border-neutral-100 bg-white hover:border-neutral-200"}`}
                 >
@@ -175,7 +184,7 @@ export default function UserPaymentPage() {
                 </button>
 
                 {/* Apple Pay Option */}
-                <button 
+                <button
                   onClick={() => setSelectedMethod("apple_pay")}
                   className={`w-full flex items-center justify-between p-4 rounded-[12px] border-2 transition-all text-left ${selectedMethod === "apple_pay" ? "border-[#b91c1c] bg-[#fef2f2]" : "border-neutral-100 bg-white hover:border-neutral-200"}`}
                 >
@@ -189,7 +198,7 @@ export default function UserPaymentPage() {
                 </button>
 
                 {/* Cash Option */}
-                <button 
+                <button
                   onClick={() => setSelectedMethod("cash")}
                   className={`w-full flex items-center justify-between p-4 rounded-[12px] border-2 transition-all text-left ${selectedMethod === "cash" ? "border-[#b91c1c] bg-[#fef2f2]" : "border-neutral-100 bg-white hover:border-neutral-200"}`}
                 >
@@ -203,7 +212,7 @@ export default function UserPaymentPage() {
                 </button>
 
                 {/* UPI Option */}
-                <button 
+                <button
                   onClick={() => setSelectedMethod("upi")}
                   className={`w-full flex items-center justify-between p-4 rounded-[12px] border-2 transition-all text-left ${selectedMethod === "upi" ? "border-[#b91c1c] bg-[#fef2f2]" : "border-neutral-100 bg-white hover:border-neutral-200"}`}
                 >
@@ -218,7 +227,7 @@ export default function UserPaymentPage() {
 
               </div>
 
-              <button 
+              <button
                 onClick={handlePayment}
                 disabled={processing}
                 className="w-full bg-[#b91c1c] hover:bg-[#991b1b] text-white rounded-[12px] h-[56px] font-bold text-[15px] flex items-center justify-center gap-2 transition-all shadow-[0_6px_16px_rgba(185,28,28,0.25)] disabled:opacity-70 disabled:hover:bg-[#b91c1c]"

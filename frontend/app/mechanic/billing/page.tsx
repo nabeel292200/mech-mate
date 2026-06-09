@@ -1,14 +1,22 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
-import { api } from "../../../../src/services/api.service";
-import { getSocket } from "../../../../src/services/socket";
+import { useRouter } from "next/navigation";
+import { api } from "../../../src/services/api.service";
+import { getSocket } from "../../../src/services/socket";
 
 export default function MechanicBillingPage() {
   const router = useRouter();
-  const params = useParams();
-  const requestId = params?.requestId as string;
+  const [requestId, setRequestId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const activeId = localStorage.getItem("activeRequestId");
+    if (!activeId) {
+      router.push("/");
+    } else {
+      setRequestId(activeId);
+    }
+  }, [router]);
 
   const [requestData, setRequestData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -25,7 +33,7 @@ export default function MechanicBillingPage() {
         const res: any = await api.get(`mechanic/requests/${requestId}`);
         if (res.success) {
           setRequestData(res.data);
-          
+
           if (res.data.problemDetails) {
             setItems([
               { id: 1, type: "Custom", description: `Repair: ${res.data.problemDetails.substring(0, 40)}`, price: "" }
@@ -61,19 +69,19 @@ export default function MechanicBillingPage() {
       alert("Please add at least one item with a valid price.");
       return;
     }
-    
+
     setSending(true);
-    
+
     try {
-      await api.put(`mechanic/requests/${requestId}/invoice`, { 
+      await api.put(`mechanic/requests/${requestId}/invoice`, {
         totalAmount: subtotal,
         invoiceItems: items
       });
-      
+
       const socket = getSocket();
       socket.emit("send_invoice", { requestId });
-      
-      router.push(`/mechanic/payment-waiting/${requestId}`);
+
+      router.push(`/mechanic/payment-waiting`);
     } catch (err) {
       console.error("Failed to send invoice:", err);
       alert("Failed to send invoice.");
@@ -81,7 +89,7 @@ export default function MechanicBillingPage() {
     }
   };
 
-  if (loading) {
+  if (loading || !requestId) {
     return (
       <div className="min-h-screen bg-[#fcfcfd] flex flex-col items-center justify-center pb-32">
         <span className="w-12 h-12 border-4 border-neutral-200 border-t-red-600 rounded-full animate-spin"></span>

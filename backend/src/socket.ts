@@ -7,7 +7,7 @@ export const initSocket = (httpServer: HttpServer) => {
   });
 
   // Track connected mechanics: socketId -> mechanic info
-  const connectedMechanics = new Map<string, { mechanicId: string, brandExpertise: string[] }>();
+  const connectedMechanics = new Map<string, { mechanicId: string, brandExpertise: string[], specialistSkills: string[] }>();
 
   io.on("connection", (socket: Socket) => {
     console.log(`Socket Connected: ${socket.id}`);
@@ -20,7 +20,8 @@ export const initSocket = (httpServer: HttpServer) => {
         if (mechanic) {
           connectedMechanics.set(socket.id, {
             mechanicId: data.mechanicId,
-            brandExpertise: mechanic.brandExpertise || []
+            brandExpertise: mechanic.brandExpertise || [],
+            specialistSkills: mechanic.specialistSkills || []
           });
           console.log(`Mechanic registered: ${data.mechanicId} / Socket: ${socket.id}`);
         }
@@ -29,13 +30,14 @@ export const initSocket = (httpServer: HttpServer) => {
       }
     });
 
-    socket.on("create_request", async (data: { userId: string, brandName: string, problemDetails: string, userLocation: any }) => {
+    socket.on("create_request", async (data: { userId: string, brandName: string, specialistSkill: string, problemDetails: string, userLocation: any }) => {
       try {
         const ServiceRequest = require("./models/ServiceRequest.model").default;
 
         const newReq = await ServiceRequest.create({
           userId: data.userId,
           brandName: data.brandName,
+          specialistSkill: data.specialistSkill,
           problemDetails: data.problemDetails,
           userLocation: data.userLocation,
           status: "pending"
@@ -46,16 +48,34 @@ export const initSocket = (httpServer: HttpServer) => {
         let mechanicsNotified = 0;
 
         for (const [socketId, mechanicInfo] of connectedMechanics.entries()) {
-          const isExpert = mechanicInfo.brandExpertise?.some(b => {
+          const hasSkill = mechanicInfo.specialistSkills?.some(s => {
+            if (!s || !data.specialistSkill) return false;
+            return s.toLowerCase() === data.specialistSkill.toLowerCase();
+          });
+          
+          const isCommonSkill = data.specialistSkill && [
+            "fuel delivery",
+            "tow service"
+          ].includes(data.specialistSkill.toLowerCase());
+
+          const hasBrand = mechanicInfo.brandExpertise?.some(b => {
             if (!b || !data.brandName) return false;
             const mechB = b.toLowerCase();
             const reqB = data.brandName.toLowerCase();
             return mechB === reqB || mechB.includes(reqB) || reqB.includes(mechB);
           });
 
-          if (isExpert) {
+          console.log(`[SOCKET] Matching Mechanic: ${mechanicInfo.mechanicId}`);
+          console.log(`[SOCKET] - Req Skill: ${data.specialistSkill}, Mech Skills: ${mechanicInfo.specialistSkills}`);
+          console.log(`[SOCKET] - Req Brand: ${data.brandName}, Mech Brands: ${mechanicInfo.brandExpertise}`);
+          console.log(`[SOCKET] - hasSkill: ${hasSkill}, isCommonSkill: ${isCommonSkill}, hasBrand: ${hasBrand}`);
+
+          if (hasSkill && (hasBrand || isCommonSkill)) {
+            console.log(`[SOCKET] -> MATCHED! Emitting to ${socketId}`);
             io.to(socketId).emit("new_request", newReq);
             mechanicsNotified++;
+          } else {
+            console.log(`[SOCKET] -> NO MATCH`);
           }
         }
 

@@ -1,533 +1,422 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useAuthStore } from "../../../src/store/authStore";
+import { api } from "../../../src/services/api.service";
 
-export default function AdminLoginPage() {
+function AdminLoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialRole = (searchParams.get("role") as "admin" | "mechanic") ?? "mechanic";
+  const { login, register, isAuthenticated, user } = useAuthStore();
 
-  // Login form states
+  const [role, setRole] = useState<"admin" | "mechanic">(initialRole);
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      if (user.role === "admin") {
+        router.push("/admin/dashboard");
+      } else if (user.role === "mechanic") {
+        if (!user.isProfileComplete) {
+          router.push("/mechanic/dashboard");
+        } else {
+          router.push("/mechanic/home");
+        }
+      }
+    }
+  }, [isAuthenticated, user, router]);
+
+  const [mode, setMode] = useState<"login" | "register" | "forgot" | "reset">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+  const [resetCode, setResetCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [shake, setShake] = useState(false);
   const [error, setError] = useState("");
 
-  // Admin Request Modal states
-  const [showRequestModal, setShowRequestModal] = useState(false);
-  const [adminPhone, setAdminPhone] = useState("");
-  const [adminReason, setAdminReason] = useState("");
-  const [adminSubmitting, setAdminSubmitting] = useState(false);
-  const [adminSuccess, setAdminSuccess] = useState(false);
+  const triggerShake = () => {
+    setShake(true);
+    setTimeout(() => setShake(false), 500);
+  };
 
-  const handleLoginSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
-      setError("Please enter both ID/Email and Password.");
-      return;
+
+    // Validation
+    if (mode === "forgot") {
+      if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+        setError("Please enter a valid email address");
+        triggerShake();
+        return;
+      }
+    } else if (mode === "reset") {
+      if (resetCode.length !== 4) {
+        setError("Please enter a valid 4-digit code");
+        triggerShake();
+        return;
+      }
+      if (newPassword.length < 6) {
+        setError("Password must be at least 6 characters");
+        triggerShake();
+        return;
+      }
+    } else {
+      if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+        setError("Please enter a valid email address");
+        triggerShake();
+        return;
+      }
+      if (password.length < 6) {
+        setError("Password must be at least 6 characters");
+        triggerShake();
+        return;
+      }
     }
+
     setError("");
     setLoading(true);
 
     try {
-      // Simulate validation / authentication response
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      router.push("/admin/dashboard");
+      if (mode === "forgot") {
+        const res = await api.post<{success: boolean; message: string}>("auth/forgot-password", { emailOrPhone: email });
+        if (res.success) {
+          setMode("reset");
+          setError("");
+        }
+        setLoading(false);
+        return;
+      }
+
+      if (mode === "reset") {
+        const res = await api.post<{success: boolean; message: string}>("auth/reset-password", { emailOrPhone: email, resetCode, newPassword });
+        if (res.success) {
+          setMode("login");
+          setPassword("");
+          setError("Password reset successfully. Please log in.");
+        }
+        setLoading(false);
+        return;
+      }
+
+      let authData;
+      if (mode === "login") {
+        authData = await login(email, password);
+      } else {
+        // Register: admin/mechanic don't have phone, so pass empty string
+        authData = await register("", email, password, role);
+      }
+
+      // Role mismatch guard
+      if (role === "mechanic" && authData.role !== "mechanic") {
+        setError("This account is not registered as a mechanic. Please switch to Admin tab.");
+        triggerShake();
+        return;
+      }
+      if (role === "admin" && authData.role !== "admin") {
+        setError("This account is not registered as an admin. Please switch to Mechanic tab.");
+        triggerShake();
+        return;
+      }
+
+      // Routing logic based on authenticated role
+      if (authData.role === "admin") {
+        router.push("/admin/dashboard");
+      } else if (authData.role === "mechanic") {
+        if (!authData.isProfileComplete) {
+          router.push("/mechanic/dashboard");
+        } else {
+          router.push("/mechanic/home");
+        }
+      }
     } catch (err: any) {
-      setError("Invalid administrative credentials.");
+      setError(err.message || "Authentication failed. Please verify credentials.");
+      triggerShake();
     } finally {
       setLoading(false);
     }
   };
 
-  const handleRequestSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanPhone = adminPhone.replace(/\D/g, "");
-    if (cleanPhone.length !== 10) return;
-    setAdminSubmitting(true);
-
-    // Simulate API request delay
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    setAdminSubmitting(false);
-    setAdminSuccess(true);
-  };
-
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: "radial-gradient(circle at 50% 50%, #fcfcfc 0%, #f3f4f6 100%)",
-      fontFamily: "'Inter', 'Geist Sans', Arial, sans-serif",
-      display: "flex",
-      flexDirection: "column",
-      justifyContent: "space-between",
-      position: "relative",
-      boxSizing: "border-box"
-    }}>
-      
-      {/* Spacer or empty header for vertical alignment balance */}
-      <div style={{ height: 40 }} />
-
-      {/* ===== MAIN CONTAINER ===== */}
-      <main style={{
-        width: "100%",
-        maxWidth: 460,
-        margin: "0 auto",
-        padding: "0 24px",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center"
-      }}>
-        
-        {/* Brand Logo */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 28 }}>
-          <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="36" height="36" rx="8" fill="#b91c1c" />
-            <path d="M10 26V12L18 20L26 12V26" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
-            <circle cx="18" cy="20" r="2.5" fill="#fca5a5" />
-          </svg>
-          <span style={{ fontSize: 22, fontWeight: 950, color: "#111827", letterSpacing: "-0.05em" }}>
-            MECH-MATE
-          </span>
-        </div>
-
-        {/* Heading */}
-        <h1 style={{ fontSize: 32, fontWeight: 900, color: "#0f172a", marginBottom: 6, letterSpacing: "-0.03em", textAlign: "center" }}>
-          Welcome Back
-        </h1>
-        <p style={{ fontSize: 14, color: "#475569", marginBottom: 28, textAlign: "center" }}>
-          Access the AssistFlow Admin Dashboard
-        </p>
-
-        {/* Card */}
-        <div style={{
-          width: "100%",
-          background: "#ffffff",
-          border: "1px solid #e2e8f0",
-          borderRadius: 20,
-          padding: "36px 32px 32px",
-          boxShadow: "0 4px 20px rgba(0, 0, 0, 0.03), 0 10px 30px rgba(0, 0, 0, 0.02)",
-          boxSizing: "border-box"
-        }}>
-          
-          <form onSubmit={handleLoginSubmit}>
-            {/* Admin ID / Email */}
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#334155", marginBottom: 8 }}>
-                Admin ID or Email
-              </label>
-              <div style={{ position: "relative" }}>
-                <span className="material-symbols-outlined" style={{
-                  position: "absolute",
-                  left: 14,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  fontSize: 20,
-                  color: "#94a3b8"
-                }}>
-                  person
-                </span>
-                <input
-                  type="text"
-                  required
-                  placeholder="Enter your ID or email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "13px 16px 13px 44px",
-                    fontSize: 14,
-                    color: "#1e293b",
-                    backgroundColor: "#f8fafc",
-                    border: "1.5px solid #e2e8f0",
-                    borderRadius: 10,
-                    outline: "none",
-                    boxSizing: "border-box",
-                    transition: "border-color 0.2s"
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = "#b91c1c"}
-                  onBlur={(e) => e.target.style.borderColor = "#e2e8f0"}
-                />
-              </div>
-            </div>
-
-            {/* Password */}
-            <div style={{ marginBottom: 24 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <label style={{ fontSize: 13, fontWeight: 700, color: "#334155", margin: 0 }}>
-                  Password
-                </label>
-                <a href="#" style={{ fontSize: 12, fontWeight: 600, color: "#b91c1c", textDecoration: "none" }}>
-                  Forgot Password?
-                </a>
-              </div>
-              <div style={{ position: "relative" }}>
-                <span className="material-symbols-outlined" style={{
-                  position: "absolute",
-                  left: 14,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  fontSize: 20,
-                  color: "#94a3b8"
-                }}>
-                  lock
-                </span>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  required
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "13px 44px 13px 44px",
-                    fontSize: 14,
-                    color: "#1e293b",
-                    backgroundColor: "#f8fafc",
-                    border: "1.5px solid #e2e8f0",
-                    borderRadius: 10,
-                    outline: "none",
-                    boxSizing: "border-box",
-                    letterSpacing: showPassword ? "0" : "4px",
-                    transition: "border-color 0.2s"
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = "#b91c1c"}
-                  onBlur={(e) => e.target.style.borderColor = "#e2e8f0"}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  style={{
-                    position: "absolute",
-                    right: 14,
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    padding: 0,
-                    color: "#94a3b8"
-                  }}
-                >
-                  <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
-                    {showPassword ? "visibility_off" : "visibility"}
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            {/* Error Message */}
-            {error && (
-              <div style={{
-                backgroundColor: "#fef2f2",
-                color: "#b91c1c",
-                borderRadius: 10,
-                padding: "12px",
-                fontSize: 13,
-                fontWeight: 500,
-                marginBottom: 16
-              }}>
-                ⚠️ {error}
-              </div>
-            )}
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                width: "100%",
-                background: "#b91c1c",
-                color: "#ffffff",
-                border: "none",
-                borderRadius: 10,
-                padding: "14px 0",
-                fontSize: 14,
-                fontWeight: 700,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
-                transition: "background-color 0.2s"
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#991b1b"}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#b91c1c"}
-            >
-              {loading ? "Logging in..." : "Login to Dashboard"}
-              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
-                arrow_forward
-              </span>
-            </button>
-          </form>
-
-          {/* Security Information Box */}
-          <div style={{
-            display: "flex",
-            gap: 12,
-            backgroundColor: "#f8fafc",
-            border: "1px solid #e2e8f0",
-            borderRadius: 10,
-            padding: "16px",
-            marginTop: 24,
-            alignItems: "flex-start"
-          }}>
-            <span className="material-symbols-outlined" style={{
-              color: "#b91c1c",
-              fontSize: 18,
-              marginTop: 1,
-              flexShrink: 0
-            }}>
-              error
-            </span>
-            <p style={{
-              fontSize: 12,
-              color: "#64748b",
-              lineHeight: 1.5,
-              margin: 0,
-              fontWeight: 500
-            }}>
-              Authorized access only. All activities within the AssistFlow Admin environment are logged and monitored for security purposes.
+    <div style={{ fontFamily: "'Inter', 'Geist Sans', Arial, sans-serif" }} className="flex min-h-screen">
+      {/* ===== LEFT PANEL ===== */}
+      <div className="relative hidden md:block" style={{ flex: "1.2", minWidth: 0 }}>
+        <a href="/" className="absolute top-7 left-8 z-10 text-[22px] font-black tracking-tight text-red-700 no-underline">
+          MECH-MATE
+        </a>
+        <img
+          src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=900&auto=format&fit=crop&q=80"
+          alt="Mechanic working"
+          className="w-full h-full object-cover object-center block"
+          style={{ position: "absolute", inset: 0 }}
+        />
+        <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.10) 50%, rgba(0,0,0,0.50) 100%)" }} />
+        <div className="absolute z-10" style={{ bottom: 36, left: 32, right: 32, background: "rgba(255,255,255,0.15)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.25)", borderRadius: 14, padding: "18px 20px", display: "flex", alignItems: "center", gap: 14 }}>
+          <span style={{ fontSize: 26, flexShrink: 0 }}>🔧</span>
+          <div>
+            <p className="text-[15px] font-bold text-white" style={{ marginBottom: 3 }}>
+              {role === "mechanic" ? "Join Our Network" : "Admin Portal"}
+            </p>
+            <p className="text-[13px] leading-snug" style={{ color: "rgba(255,255,255,0.8)" }}>
+              {role === "mechanic" ? "Connect with drivers who need your skills" : "Manage mechanics and system operations"}
             </p>
           </div>
         </div>
+      </div>
 
-        {/* Option at Bottom */}
-        <p style={{ fontSize: 13, color: "#64748b", marginTop: 24, marginBottom: 0, textAlign: "center" }}>
-          Need an administrator account?{" "}
-          <button
-            type="button"
-            onClick={() => {
-              setAdminPhone("");
-              setAdminReason("");
-              setAdminSuccess(false);
-              setShowRequestModal(true);
-            }}
-            style={{
-              color: "#b91c1c",
-              fontWeight: 700,
-              border: "none",
-              background: "none",
-              padding: 0,
-              cursor: "pointer",
-              fontFamily: "inherit",
-              fontSize: 13
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.textDecoration = "underline"}
-            onMouseLeave={(e) => e.currentTarget.style.textDecoration = "none"}
+      {/* ===== RIGHT PANEL ===== */}
+      <div className="flex items-center justify-center py-12 px-8 bg-[#f2f2f2]" style={{ flex: 1, minWidth: 0 }}>
+        <div className="w-full" style={{ maxWidth: 420 }}>
+          {/* Card Wrapper */}
+          <div
+            className={`bg-white rounded-2xl shadow-md border border-gray-100 mb-4 ${shake ? "animate-shake" : ""}`}
+            style={{ padding: "32px 28px" }}
           >
-            Request Admin Access
-          </button>
-        </p>
-      </main>
+            {/* Role Tabs */}
+            <div style={{ display: "flex", background: "#f3f4f6", borderRadius: 12, padding: 4, marginBottom: 16 }}>
+              <button
+                type="button"
+                onClick={() => { setRole("mechanic"); setError(""); }}
+                style={{
+                  flex: 1,
+                  padding: "10px 0",
+                  fontSize: 14,
+                  fontWeight: "bold",
+                  borderRadius: 8,
+                  border: "none",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                  background: role === "mechanic" ? "#fff" : "transparent",
+                  color: role === "mechanic" ? "#111827" : "#9ca3af",
+                  boxShadow: role === "mechanic" ? "0 1px 3px rgba(0,0,0,0.1)" : "none"
+                }}
+              >
+                Mechanic
+              </button>
+              <button
+                type="button"
+                onClick={() => { setRole("admin"); setError(""); }}
+                style={{
+                  flex: 1,
+                  padding: "10px 0",
+                  fontSize: 14,
+                  fontWeight: "bold",
+                  borderRadius: 8,
+                  border: "none",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                  background: role === "admin" ? "#fff" : "transparent",
+                  color: role === "admin" ? "#111827" : "#9ca3af",
+                  boxShadow: role === "admin" ? "0 1px 3px rgba(0,0,0,0.1)" : "none"
+                }}
+              >
+                Admin
+              </button>
+            </div>
 
-      {/* ===== BOTTOM FOOTER ===== */}
-      <footer style={{
-        width: "100%",
-        borderTop: "1px solid #e2e8f0",
-        padding: "20px 24px",
-        display: "flex",
-        flexWrap: "wrap",
-        justifyContent: "space-between",
-        alignItems: "center",
-        gap: 16,
-        fontSize: 12,
-        color: "#64748b",
-        marginTop: 40,
-        boxSizing: "border-box"
-      }}>
-        <div style={{ fontWeight: 700, color: "#475569" }}>
-          AssistFlow Admin
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-          <a href="#" style={{ color: "#64748b", textDecoration: "none" }}>Privacy Policy</a>
-          <a href="#" style={{ color: "#64748b", textDecoration: "none" }}>Terms of Service</a>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "#22c55e", display: "inline-block" }} />
-            System Status
-          </div>
-        </div>
-        <div>
-          © 2024 AssistFlow Roadside. All rights reserved.
-        </div>
-      </footer>
-
-      {/* ===== REQUEST ADMIN ACCESS MODAL ===== */}
-      {showRequestModal && (
-        <div style={{
-          position: "fixed",
-          inset: 0,
-          backgroundColor: "rgba(0,0,0,0.5)",
-          backdropFilter: "blur(6px)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 100
-        }}>
-          <div style={{
-            background: "#fff",
-            borderRadius: 20,
-            width: "90%",
-            maxWidth: 440,
-            padding: 32,
-            boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)",
-            position: "relative"
-          }}>
-            {/* Close */}
-            <button
-              onClick={() => {
-                setShowRequestModal(false);
-                setAdminSuccess(false);
-                setAdminReason("");
-              }}
-              style={{
-                position: "absolute",
-                top: 20,
-                right: 20,
-                background: "transparent",
-                border: "none",
-                fontSize: 20,
-                cursor: "pointer",
-                color: "#9ca3af"
-              }}
-            >
-              ✕
-            </button>
-
-            {!adminSuccess ? (
-              <>
-                <h2 style={{ fontSize: 22, fontWeight: 800, color: "#111827", marginBottom: 8, letterSpacing: "-0.02em" }}>
-                  Request Admin Access
-                </h2>
-                <p style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.5, marginBottom: 24 }}>
-                  Submit your request to gain administrative privileges for the MECH-MATE dashboard.
-                </p>
-
-                <form onSubmit={handleRequestSubmit}>
-                  {/* Phone Input */}
-                  <div style={{ marginBottom: 16 }}>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#4b5563", marginBottom: 6 }}>
-                      Mobile Number
-                    </label>
-                    <div style={{ display: "flex", borderRadius: 10, border: "1.5px solid #e5e7eb", overflow: "hidden" }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", background: "#f9fafb", fontSize: 14, fontWeight: 600, color: "#4b5563", padding: "0 12px", borderRight: "1.5px solid #e5e7eb", flexShrink: 0, minWidth: 60 }}>
-                        +91
-                      </div>
-                      <input
-                        type="tel"
-                        maxLength={10}
-                        required
-                        placeholder="Enter 10-digit number"
-                        value={adminPhone}
-                        onChange={(e) => setAdminPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                        style={{ flex: 1, padding: "10px 14px", border: "none", outline: "none", fontSize: 14, letterSpacing: 0.5 }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Reason Textarea */}
-                  <div style={{ marginBottom: 24 }}>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#4b5563", marginBottom: 6 }}>
-                      Reason for Request
-                    </label>
-                    <textarea
-                      required
-                      rows={3}
-                      placeholder="e.g. Branch manager account activation..."
-                      value={adminReason}
-                      onChange={(e) => setAdminReason(e.target.value)}
-                      style={{
-                        width: "100%",
-                        padding: "10px 14px",
-                        borderRadius: 10,
-                        border: "1.5px solid #e5e7eb",
-                        fontSize: 14,
-                        outline: "none",
-                        resize: "none",
-                        fontFamily: "inherit",
-                        boxSizing: "border-box"
-                      }}
-                    />
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div style={{ display: "flex", gap: 12 }}>
-                    <button
-                      type="button"
-                      onClick={() => setShowRequestModal(false)}
-                      style={{
-                        flex: 1,
-                        padding: "12px 0",
-                        borderRadius: 10,
-                        border: "1.5px solid #e5e7eb",
-                        background: "#fff",
-                        color: "#4b5563",
-                        fontSize: 14,
-                        fontWeight: 600,
-                        cursor: "pointer"
-                      }}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={adminSubmitting}
-                      style={{
-                        flex: 1,
-                        padding: "12px 0",
-                        borderRadius: 10,
-                        border: "none",
-                        background: "#b91c1c",
-                        color: "#fff",
-                        fontSize: 14,
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        opacity: adminSubmitting ? 0.7 : 1
-                      }}
-                    >
-                      {adminSubmitting ? "Submitting..." : "Submit"}
-                    </button>
-                  </div>
-                </form>
-              </>
-            ) : (
-              <div style={{ textAlign: "center", padding: "12px 0" }}>
-                <span className="material-symbols-outlined" style={{ fontSize: 64, color: "#16a34a", marginBottom: 16 }}>
-                  check_circle
-                </span>
-                <h2 style={{ fontSize: 22, fontWeight: 800, color: "#111827", marginBottom: 8 }}>
-                  Request Submitted!
-                </h2>
-                <p style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6, marginBottom: 24 }}>
-                  Your request for administrator access has been logged. An MECH-MATE systems admin will review it shortly.
-                </p>
-                <button
-                  onClick={() => {
-                    setShowRequestModal(false);
-                    setAdminSuccess(false);
-                    setAdminReason("");
-                  }}
+            {/* Login / Register Toggle */}
+            {(mode === "login" || mode === "register") && (
+              <div style={{ display: "flex", marginBottom: 24, gap: 16 }}>
+                <span
+                  onClick={() => { setMode("login"); setError(""); }}
                   style={{
-                    width: "100%",
-                    padding: "12px 0",
-                    borderRadius: 10,
-                    border: "none",
-                    background: "#b91c1c",
-                    color: "#fff",
                     fontSize: 14,
-                    fontWeight: 700,
-                    cursor: "pointer"
+                    fontWeight: mode === "login" ? "bold" : "500",
+                    color: mode === "login" ? "#b91c1c" : "#6b7280",
+                    cursor: "pointer",
+                    borderBottom: mode === "login" ? "2px solid #b91c1c" : "2px solid transparent",
+                    paddingBottom: 4
                   }}
                 >
-                  Close Window
-                </button>
+                  Sign In
+                </span>
+                <span
+                  onClick={() => { setMode("register"); setError(""); }}
+                  style={{
+                    fontSize: 14,
+                    fontWeight: mode === "register" ? "bold" : "500",
+                    color: mode === "register" ? "#b91c1c" : "#6b7280",
+                    cursor: "pointer",
+                    borderBottom: mode === "register" ? "2px solid #b91c1c" : "2px solid transparent",
+                    paddingBottom: 4
+                  }}
+                >
+                  Register
+                </span>
               </div>
             )}
+
+            <h1 className="text-[22px] font-extrabold text-gray-900 tracking-tight mb-1.5">
+              {mode === "login" ? `Welcome Back, ${role === "admin" ? "Admin" : "Mechanic"}` : mode === "register" ? `Create ${role === "admin" ? "Admin" : "Mechanic"} Account` : mode === "forgot" ? "Reset Password" : "Enter Reset Code"}
+            </h1>
+            <p className="text-[14px] text-gray-400 leading-relaxed mb-6">
+              {mode === "login" || mode === "register" ? (
+                role === "mechanic"
+                  ? `Authenticate as a MECH-MATE Mechanic.`
+                  : `Authenticate to access the Admin Console.`
+              ) : mode === "forgot" ? (
+                "Enter your registered email address to receive a reset code."
+              ) : (
+                "Enter the 4-digit reset code and a new password."
+              )}
+            </p>
+
+            <form onSubmit={handleSubmit}>
+              {/* Login Email Input */}
+              {mode !== "reset" && (
+                <div className="mb-4">
+                  <label className="block text-[12px] font-semibold text-gray-500 mb-2 tracking-wide">
+                    Email Address
+                  </label>
+                  <div className="flex rounded-xl overflow-hidden" style={{ border: "1.5px solid #e5e7eb" }}>
+                    <input
+                      className="flex-1 outline-none text-[16px] font-medium text-gray-900 bg-white placeholder-gray-300"
+                      style={{ padding: "13px 16px", border: "none", minWidth: 0 }}
+                      type="email"
+                      placeholder="Enter your email address"
+                      value={email}
+                      onChange={(e) => { 
+                        setEmail(e.target.value);
+                        setError(""); 
+                      }}
+                      required
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Reset Code Input */}
+              {mode === "reset" && (
+                <div className="mb-4">
+                  <label className="block text-[12px] font-semibold text-gray-500 mb-2 tracking-wide">
+                    4-Digit Reset Code
+                  </label>
+                  <div className="rounded-xl overflow-hidden" style={{ border: "1.5px solid #e5e7eb" }}>
+                    <input
+                      className="w-full outline-none text-[16px] font-medium text-gray-900 bg-white placeholder-gray-300"
+                      style={{ padding: "13px 16px", border: "none", boxSizing: "border-box", letterSpacing: 2 }}
+                      type="text"
+                      maxLength={4}
+                      placeholder="e.g. 1234"
+                      value={resetCode}
+                      onChange={(e) => { setResetCode(e.target.value.replace(/\D/g, "")); setError(""); }}
+                      required
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Password Input */}
+              {(mode === "login" || mode === "register" || mode === "reset") && (
+                <div className="mb-5">
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                    <label className="block text-[12px] font-semibold text-gray-500 mb-2 tracking-wide">
+                      {mode === "reset" ? "New Password" : "Password"}
+                    </label>
+                    {mode === "login" && (
+                      <span 
+                        onClick={() => { setMode("forgot"); setError(""); }}
+                        style={{ fontSize: 12, fontWeight: 600, color: "#b91c1c", cursor: "pointer" }}
+                      >
+                        Forgot Password?
+                      </span>
+                    )}
+                  </div>
+                  <div className="rounded-xl overflow-hidden" style={{ border: "1.5px solid #e5e7eb" }}>
+                    <input
+                      className="w-full outline-none text-[16px] font-medium text-gray-900 bg-white placeholder-gray-300"
+                      style={{ padding: "13px 16px", border: "none", boxSizing: "border-box" }}
+                      type="password"
+                      placeholder="Enter password (min 6 chars)"
+                      value={mode === "reset" ? newPassword : password}
+                      onChange={(e) => { 
+                        if (mode === "reset") setNewPassword(e.target.value); 
+                        else setPassword(e.target.value); 
+                        setError(""); 
+                      }}
+                      required
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Error Alert */}
+              {error && (
+                <div className="bg-red-50 text-red-600 rounded-xl p-3 text-[13px] font-medium mb-4">
+                  ⚠️ {error}
+                </div>
+              )}
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-red-700 hover:bg-red-800 disabled:opacity-60 text-white rounded-xl font-extrabold tracking-[1.5px] uppercase border-none cursor-pointer transition-all duration-200 hover:-translate-y-px active:scale-[0.98] flex items-center justify-center"
+                style={{ padding: "15px 0", fontSize: 14 }}
+              >
+                {loading ? (
+                  <span className="w-5 h-5 border-[2.5px] border-white/40 border-t-white rounded-full animate-spin-btn inline-block" />
+                ) : mode === "login" ? (
+                  "SIGN IN"
+                ) : mode === "register" ? (
+                  "CREATE ACCOUNT"
+                ) : mode === "forgot" ? (
+                  "SEND RESET CODE"
+                ) : (
+                  "RESET PASSWORD"
+                )}
+              </button>
+
+              {/* Back to Login */}
+              {(mode === "forgot" || mode === "reset") && (
+                <div style={{ textAlign: "center", marginTop: 16 }}>
+                  <button 
+                    type="button" 
+                    onClick={() => { setMode("login"); setError(""); }}
+                    style={{ background: "none", border: "none", color: "#6b7280", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4 }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>arrow_back</span> Back to Login
+                  </button>
+                </div>
+              )}
+            </form>
           </div>
+
+          <div style={{ marginTop: 24, borderTop: "1px solid #f3f4f6", paddingTop: 16, textAlign: "center" }}>
+            <p style={{ fontSize: 13, color: "#6b7280", margin: 0, lineHeight: 1.6 }}>
+              Looking for Customer Login?{" "}
+              <button
+                type="button"
+                onClick={() => router.push("/login")}
+                style={{ color: "#b91c1c", fontWeight: 700, textDecoration: "none", background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 13 }}
+                onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
+                onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}>
+                Go to <br /> Customer Portal
+              </button>
+            </p>
+          </div>
+
+          {/* Policy footer */}
+          <p className="text-center text-[12px] text-gray-400 leading-relaxed px-2 mt-4">
+            By continuing, you agree to our{" "}
+            <a href="#" className="text-red-700 underline font-medium">Terms of Service</a>
+            {" "}and <a href="#" className="text-red-700 underline font-medium">Privacy Policy</a>.
+          </p>
         </div>
-      )}
+      </div>
     </div>
+  );
+}
+
+export default function AdminLoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen bg-[#f2f2f2]">
+        <span className="w-9 h-9 border-[3px] border-gray-200 border-t-red-700 rounded-full animate-spin-btn inline-block" />
+      </div>
+    }>
+      <AdminLoginContent />
+    </Suspense>
   );
 }

@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuthStore } from "../../src/store/authStore";
 
 const vehicles = [
   {
@@ -73,6 +74,7 @@ const vehicles = [
 
 export default function VehicleTypePage() {
   const router = useRouter();
+  const { logout } = useAuthStore();
   const [selected, setSelected] = useState<string | null>(null);
 
   const handleContinue = () => {
@@ -84,10 +86,18 @@ export default function VehicleTypePage() {
     <div style={{ minHeight: "100vh", background: "#fff", fontFamily: "'Inter', 'Geist Sans', Arial, sans-serif" }}>
 
       {/* ===== TOP BAR ===== */}
-      <header style={{ borderBottom: "1px solid #f3f4f6", padding: "0 24px", height: 56, display: "flex", alignItems: "center" }}>
+      <header style={{ borderBottom: "1px solid #f3f4f6", padding: "0 24px", height: 56, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <a href="/" style={{ fontSize: 20, fontWeight: 900, letterSpacing: "-0.04em", color: "#b91c1c", textDecoration: "none" }}>
           MECH-MATE
         </a>
+        <button
+          onClick={logout}
+          className="hover:text-red-700 transition-colors"
+          style={{ background: "none", border: "none", color: "#6b7280", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: 18 }}>logout</span>
+          Logout
+        </button>
       </header>
 
       {/* ===== MAIN CONTENT ===== */}

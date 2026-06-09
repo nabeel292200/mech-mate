@@ -1,18 +1,27 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { getSocket } from "../../../src/services/socket";
+import { useRouter } from "next/navigation";
+import { getSocket } from "../../src/services/socket";
 
 export default function ServiceProgressPage() {
-  const { requestId } = useParams();
   const router = useRouter();
+  const [requestId, setRequestId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const activeId = localStorage.getItem("activeRequestId");
+    if (!activeId) {
+      router.push("/");
+    } else {
+      setRequestId(activeId);
+    }
+  }, [router]);
   const [requestData, setRequestData] = useState<any>(null);
 
   useEffect(() => {
     const fetchRequest = async () => {
       try {
-        const { api } = require("../../../src/services/api.service");
+        const { api } = require("../../src/services/api.service");
         const res = await api.get(`requests/${requestId}`);
         if (res.success) {
           setRequestData(res.data);
@@ -28,7 +37,7 @@ export default function ServiceProgressPage() {
     const socket = getSocket();
     socket.on("invoice_received", (data: any) => {
       if (data.requestId === requestId) {
-        router.push(`/payment/${requestId}`);
+        router.push(`/payment`);
       }
     });
     return () => { socket.off("invoice_received"); };
@@ -38,9 +47,18 @@ export default function ServiceProgressPage() {
   const mechanicAvatar = requestData?.mechanicUser?.avatar || "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png";
   const rating = requestData?.mechanicId?.rating || "4.9";
 
+  if (!requestId) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#f8f9fa]">
+        <div className="w-10 h-10 border-4 border-neutral-300 border-t-[#b7102a] rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
   return (
     <>
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         .loading-pulse {
             animation: pulse-ring 2s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;
         }
@@ -53,7 +71,7 @@ export default function ServiceProgressPage() {
         }
       `}} />
       <div className="bg-[#f8f9fa] text-[#191c1d] font-sans antialiased min-h-screen flex flex-col">
-        
+
         {/* TopAppBar Component */}
         <header className="w-full top-0 sticky shadow-sm bg-[#f8f9fa] z-50">
           <div className="flex justify-between items-center px-[20px] h-16 w-full">
@@ -65,7 +83,7 @@ export default function ServiceProgressPage() {
 
         {/* Main Canvas */}
         <main className="flex-grow flex flex-col items-center px-[20px] pt-[32px] pb-32 max-w-[1200px] mx-auto w-full">
-          
+
           {/* Central Hero Section: Repair in Progress */}
           <section className="w-full flex flex-col items-center text-center mb-[48px]">
             <div className="relative w-48 h-48 flex items-center justify-center mb-[32px]">
@@ -88,14 +106,11 @@ export default function ServiceProgressPage() {
               <div className="flex-grow">
                 <h3 className="text-[14px] leading-[20px] font-bold text-[#191c1d]">{mechanicName}</h3>
                 <p className="text-[12px] leading-[16px] font-medium text-[#5b403f] flex items-center gap-1 mt-0.5">
-                  <span className="material-symbols-outlined text-[14px]" data-icon="star" style={{ fontVariationSettings: "'FILL' 1" }}>star</span> 
+                  <span className="material-symbols-outlined text-[14px]" data-icon="star" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
                   {rating} Expert Mechanic • Verified Professional
                 </p>
               </div>
               <div className="flex gap-2">
-                <button className="w-10 h-10 rounded-full bg-[#edeeef] flex items-center justify-center text-[#b7102a] active:scale-90 transition-transform">
-                  <span className="material-symbols-outlined" data-icon="call">call</span>
-                </button>
                 <button className="w-10 h-10 rounded-full bg-[#edeeef] flex items-center justify-center text-[#b7102a] active:scale-90 transition-transform">
                   <span className="material-symbols-outlined" data-icon="chat">chat</span>
                 </button>

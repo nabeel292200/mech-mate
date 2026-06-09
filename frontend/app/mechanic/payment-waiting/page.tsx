@@ -1,13 +1,22 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { getSocket } from "../../../../src/services/socket";
-import MechanicLayout from "../../../../src/components/MechanicLayout";
+import { useRouter } from "next/navigation";
+import { getSocket } from "../../../src/services/socket";
+import MechanicLayout from "../../../src/components/MechanicLayout";
 
 export default function PaymentWaitingPage() {
-  const { requestId } = useParams();
   const router = useRouter();
+  const [requestId, setRequestId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const activeId = localStorage.getItem("activeRequestId");
+    if (!activeId) {
+      router.push("/");
+    } else {
+      setRequestId(activeId);
+    }
+  }, [router]);
 
   useEffect(() => {
     const socket = getSocket();
@@ -21,7 +30,8 @@ export default function PaymentWaitingPage() {
 
   return (
     <MechanicLayout activeTab="Active Requests">
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         .loading-pulse {
             animation: pulse-ring 2s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;
         }
@@ -31,7 +41,7 @@ export default function PaymentWaitingPage() {
         }
       `}} />
       <div className="flex flex-col items-center justify-center min-h-[70vh] w-full max-w-3xl mx-auto text-center px-4">
-        
+
         {/* Central Hero Section */}
         <section className="w-full flex flex-col items-center mb-12">
           <div className="relative w-48 h-48 flex items-center justify-center mb-8 mt-12">
@@ -90,7 +100,7 @@ export default function PaymentWaitingPage() {
         </section>
 
         {/* Manual Bypass / Refresh for Mechanics */}
-        <button 
+        <button
           onClick={() => router.push("/mechanic/completed-jobs")}
           className="text-sm font-bold text-neutral-400 hover:text-neutral-600 transition-colors"
         >

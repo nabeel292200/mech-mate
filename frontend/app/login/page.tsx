@@ -1,27 +1,34 @@
 "use client";
 
-import React, { useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import React, { useState, useEffect, Suspense } from "react";
+import { useRouter } from "next/navigation";
 import { useAuthStore } from "../../src/store/authStore";
 import { api } from "../../src/services/api.service";
 
 function LoginContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const role = (searchParams.get("role") as "user" | "mechanic") ?? "user";
-  const { login, register } = useAuthStore();
+  const { login, register, isAuthenticated, user } = useAuthStore();
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      if (user.role === "user") {
+        router.push("/vehicle-type");
+      } else if (user.role === "admin") {
+        router.push("/admin/dashboard");
+      } else if (user.role === "mechanic") {
+        router.push("/mechanic/dashboard");
+      }
+    }
+  }, [isAuthenticated, user, router]);
 
   const [mode, setMode] = useState<"login" | "register" | "forgot" | "reset">("login");
   const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [resetCode, setResetCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [shake, setShake] = useState(false);
   const [error, setError] = useState("");
-
-
 
   const triggerShake = () => {
     setShake(true);
@@ -34,8 +41,8 @@ function LoginContent() {
 
     // Validation
     if (mode === "forgot") {
-      if (!phone.trim()) {
-        setError("Please enter a valid email or phone number");
+      if (cleanPhone.length !== 10) {
+        setError("Please enter a valid 10-digit number");
         triggerShake();
         return;
       }
@@ -68,7 +75,7 @@ function LoginContent() {
 
     try {
       if (mode === "forgot") {
-        const res = await api.post<{success: boolean; message: string}>("auth/forgot-password", { emailOrPhone: phone });
+        const res = await api.post<{success: boolean; message: string}>("auth/forgot-password", { emailOrPhone: cleanPhone });
         if (res.success) {
           setMode("reset");
           setError("");
@@ -78,11 +85,11 @@ function LoginContent() {
       }
 
       if (mode === "reset") {
-        const res = await api.post<{success: boolean; message: string}>("auth/reset-password", { emailOrPhone: phone, resetCode, newPassword });
+        const res = await api.post<{success: boolean; message: string}>("auth/reset-password", { emailOrPhone: cleanPhone, resetCode, newPassword });
         if (res.success) {
           setMode("login");
           setPassword("");
-          setError("Password reset successfully. Please log in."); // Show as info
+          setError("Password reset successfully. Please log in.");
         }
         setLoading(false);
         return;
@@ -92,37 +99,17 @@ function LoginContent() {
       if (mode === "login") {
         authData = await login(cleanPhone, password);
       } else {
-        if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
-          setError("Please enter a valid email address");
-          triggerShake();
-          setLoading(false);
-          return;
-        }
-        authData = await register(cleanPhone, email, password, role);
+        // Register client (phone, no email, password, role="user")
+        authData = await register(cleanPhone, "", password, "user");
       }
 
-      // ---- Role mismatch guard ----
-      if (role === "mechanic" && authData.role !== "mechanic") {
-        setError("This account is not registered as a mechanic. Please use the customer login.");
-        triggerShake();
-        return;
-      }
-      if (role === "user" && authData.role !== "user") {
-        setError("This account is registered as a mechanic. Please use the mechanic login.");
+      if (authData.role !== "user") {
+        setError("This account is not a customer account. Please use the Staff Login.");
         triggerShake();
         return;
       }
 
-      // Routing logic based on authenticated role
-      if (authData.role === "mechanic") {
-        if (!authData.isProfileComplete) {
-          router.push("/mechanic/dashboard");
-        } else {
-          router.push("/mechanic/home");
-        }
-      } else {
-        router.push("/vehicle-type");
-      }
+      router.push("/vehicle-type");
     } catch (err: any) {
       setError(err.message || "Authentication failed. Please verify credentials.");
       triggerShake();
@@ -149,10 +136,10 @@ function LoginContent() {
           <span style={{ fontSize: 26, flexShrink: 0 }}>🔧</span>
           <div>
             <p className="text-[15px] font-bold text-white" style={{ marginBottom: 3 }}>
-              {role === "mechanic" ? "Join Our Network" : "Get Help Fast"}
+              Get Help Fast
             </p>
             <p className="text-[13px] leading-snug" style={{ color: "rgba(255,255,255,0.8)" }}>
-              {role === "mechanic" ? "Connect with drivers who need your skills" : "Nearest mechanic dispatched in minutes"}
+              Nearest mechanic dispatched in minutes
             </p>
           </div>
         </div>
@@ -166,7 +153,7 @@ function LoginContent() {
             className={`bg-white rounded-2xl shadow-md border border-gray-100 mb-4 ${shake ? "animate-shake" : ""}`}
             style={{ padding: "32px 28px" }}
           >
-            {/* Toggle Tabs */}
+            {/* Login / Register Toggle */}
             {(mode === "login" || mode === "register") && (
               <div style={{ display: "flex", background: "#f3f4f6", borderRadius: 12, padding: 4, marginBottom: 24 }}>
                 <button
@@ -215,64 +202,36 @@ function LoginContent() {
             </h1>
             <p className="text-[14px] text-gray-400 leading-relaxed mb-6">
               {mode === "login" || mode === "register" ? (
-                role === "mechanic"
-                  ? `Authenticate as a MECH-MATE Mechanic.`
-                  : `Authenticate to access rapid roadside workshops.`
+                "Authenticate to access rapid roadside workshops."
               ) : mode === "forgot" ? (
-                "Enter your registered mobile number or email to receive a reset code."
+                "Enter your registered mobile number to receive a reset code."
               ) : (
-                "Enter the 4-digit reset code from your backend console and a new password."
+                "Enter the 4-digit reset code and a new password."
               )}
             </p>
 
             <form onSubmit={handleSubmit}>
-              {/* Phone/Email Input */}
+              {/* Phone Input */}
               {mode !== "reset" && (
                 <div className="mb-4">
                   <label className="block text-[12px] font-semibold text-gray-500 mb-2 tracking-wide">
-                    {mode === "forgot" ? "Mobile Number or Email" : "Mobile Number"}
+                    Mobile Number
                   </label>
                   <div className="flex rounded-xl overflow-hidden" style={{ border: "1.5px solid #e5e7eb" }}>
-                    {(mode === "login" || mode === "register") && (
-                      <div className="flex items-center justify-center bg-gray-50 text-[15px] font-semibold text-gray-700 select-none"
-                        style={{ padding: "0 14px", borderRight: "1.5px solid #e5e7eb", flexShrink: 0, minWidth: 60 }}>
-                        +91
-                      </div>
-                    )}
+                    <div className="flex items-center justify-center bg-gray-50 text-[15px] font-semibold text-gray-700 select-none"
+                      style={{ padding: "0 14px", borderRight: "1.5px solid #e5e7eb", flexShrink: 0, minWidth: 60 }}>
+                      +91
+                    </div>
                     <input
                       className="flex-1 outline-none text-[16px] font-medium text-gray-900 bg-white placeholder-gray-300"
-                      style={{ padding: "13px 16px", border: "none", letterSpacing: mode === "forgot" ? 0 : 1, minWidth: 0 }}
-                      type={mode === "forgot" ? "text" : "tel"}
-                      placeholder={mode === "forgot" ? "Enter phone or email" : "Enter 10-digit number"}
+                      style={{ padding: "13px 16px", border: "none", minWidth: 0 }}
+                      type="tel"
+                      placeholder="Enter 10-digit number"
                       value={phone}
                       onChange={(e) => { 
-                        if (mode === "forgot") {
-                          setPhone(e.target.value);
-                        } else {
-                          setPhone(e.target.value.replace(/\D/g, "").slice(0, 10)); 
-                        }
+                        setPhone(e.target.value.replace(/\D/g, "").slice(0, 10)); 
                         setError(""); 
                       }}
-                      required
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Email Input (Register Only) */}
-              {mode === "register" && (
-                <div className="mb-4">
-                  <label className="block text-[12px] font-semibold text-gray-500 mb-2 tracking-wide">
-                    Email Address
-                  </label>
-                  <div className="rounded-xl overflow-hidden" style={{ border: "1.5px solid #e5e7eb" }}>
-                    <input
-                      className="w-full outline-none text-[16px] font-medium text-gray-900 bg-white placeholder-gray-300"
-                      style={{ padding: "13px 16px", border: "none", boxSizing: "border-box" }}
-                      type="email"
-                      placeholder="Enter your email"
-                      value={email}
-                      onChange={(e) => { setEmail(e.target.value); setError(""); }}
                       required
                     />
                   </div>
@@ -309,7 +268,7 @@ function LoginContent() {
                     </label>
                     {mode === "login" && (
                       <span 
-                        onClick={() => { setMode("forgot"); setError(""); setPhone(""); }}
+                        onClick={() => { setMode("forgot"); setError(""); }}
                         style={{ fontSize: 12, fontWeight: 600, color: "#b91c1c", cursor: "pointer" }}
                       >
                         Forgot Password?
@@ -374,24 +333,24 @@ function LoginContent() {
                 </div>
               )}
             </form>
+          </div>
 
-            <div style={{ marginTop: 24, borderTop: "1px solid #f3f4f6", paddingTop: 16, textAlign: "center" }}>
-              <p style={{ fontSize: 13, color: "#6b7280", margin: 0, lineHeight: 1.6 }}>
-                Need an administrator account?{" "}
-                <button
-                  type="button"
-                  onClick={() => router.push("/admin/login")}
-                  style={{ color: "#b91c1c", fontWeight: 700, textDecoration: "none", background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 13 }}
-                  onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
-                  onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}>
-                  Request <br /> Admin Access
-                </button>
-              </p>
-            </div>
+          <div style={{ marginTop: 24, borderTop: "1px solid #f3f4f6", paddingTop: 16, textAlign: "center" }}>
+            <p style={{ fontSize: 13, color: "#6b7280", margin: 0, lineHeight: 1.6 }}>
+              Staff Member?{" "}
+              <button
+                type="button"
+                onClick={() => router.push("/admin/login")}
+                style={{ color: "#b91c1c", fontWeight: 700, textDecoration: "none", background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 13 }}
+                onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
+                onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}>
+                Go to <br /> Staff Portal
+              </button>
+            </p>
           </div>
 
           {/* Policy footer */}
-          <p className="text-center text-[12px] text-gray-400 leading-relaxed px-2">
+          <p className="text-center text-[12px] text-gray-400 leading-relaxed px-2 mt-4">
             By continuing, you agree to our{" "}
             <a href="#" className="text-red-700 underline font-medium">Terms of Service</a>
             {" "}and <a href="#" className="text-red-700 underline font-medium">Privacy Policy</a>.

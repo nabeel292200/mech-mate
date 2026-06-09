@@ -81,7 +81,9 @@ export default function MechanicHome() {
       }
 
       if (mechId && updatedReq.mechanicId === mechId) {
-        router.push(`/live-tracking/${updatedReq._id}?role=mechanic`);
+        localStorage.setItem("activeRequestId", updatedReq._id);
+        localStorage.setItem("activeRole", "mechanic");
+        router.push(`/live-tracking`);
       }
     });
 
@@ -174,7 +176,11 @@ export default function MechanicHome() {
                   {/* Buttons */}
                   {isAccepted ? (
                     <div
-                      onClick={() => router.push(`/live-tracking/${req.id}?role=mechanic`)}
+                      onClick={() => {
+                        localStorage.setItem("activeRequestId", req.id);
+                        localStorage.setItem("activeRole", "mechanic");
+                        router.push(`/live-tracking`);
+                      }}
                       style={{ textAlign: "center", padding: "10px 0", fontSize: 13, fontWeight: 700, color: "#16a34a", cursor: "pointer", border: "1.5px dashed #16a34a", borderRadius: 8, background: "#f0fdf4" }}>
                       ✓ Request Accepted (Click to Track)
                     </div>

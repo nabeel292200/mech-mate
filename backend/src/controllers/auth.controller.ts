@@ -14,23 +14,33 @@ export const register = async (req: Request, res: Response): Promise<Response> =
 
   // Basic validation
   const cleanPhone = (phone || "").replace(/\D/g, "");
-  if (cleanPhone.length !== 10) {
-    return sendError(res, "A valid 10-digit phone number is required", 400);
-  }
   if (!password || password.length < 6) {
     return sendError(res, "Password must be at least 6 characters long", 400);
   }
-  if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
-    return sendError(res, "A valid email address is required", 400);
+  if (!["user", "admin", "mechanic"].includes(role)) {
+    return sendError(res, "Role must be 'user', 'admin' or 'mechanic'", 400);
   }
-  if (!["user", "mechanic"].includes(role)) {
-    return sendError(res, "Role must be 'user' or 'mechanic'", 400);
+  
+  if (role === "user") {
+    if (cleanPhone.length !== 10) {
+      return sendError(res, "A valid 10-digit phone number is required for clients", 400);
+    }
+  } else {
+    if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+      return sendError(res, "A valid email address is required for staff", 400);
+    }
   }
 
   // Check if user already exists
-  const existingUser = await User.findOne({ $or: [{ phone: cleanPhone }, { email }] });
-  if (existingUser) {
-    return sendError(res, "An account with this phone number or email already exists. Please login.", 400);
+  const query: any[] = [];
+  if (cleanPhone) query.push({ phone: cleanPhone });
+  if (email) query.push({ email });
+  
+  if (query.length > 0) {
+    const existingUser = await User.findOne({ $or: query });
+    if (existingUser) {
+      return sendError(res, "An account with this phone number or email already exists. Please login.", 400);
+    }
   }
 
   // Pre-create mechanic document if role is mechanic
@@ -40,14 +50,16 @@ export const register = async (req: Request, res: Response): Promise<Response> =
   }
 
   // Create user
-  const user = await User.create({
-    phone: cleanPhone,
-    email,
+  const userPayload: any = {
     password,
     role,
     mechanic: mechanicDoc ? mechanicDoc._id : null,
     approvalStatus: role === "mechanic" ? "pending" : "approved",
-  });
+  };
+  if (cleanPhone) userPayload.phone = cleanPhone;
+  if (email) userPayload.email = email;
+
+  const user = await User.create(userPayload);
 
   // Issue JWT
   const token = signToken({ id: user._id, phone: user.phone, role: user.role });
@@ -76,18 +88,22 @@ export const register = async (req: Request, res: Response): Promise<Response> =
 
 // ─────────────────────────────────────────────────────────────────
 //  POST /api/auth/login
-//  Body: { phone, password }
+//  Body: { emailOrPhone, password }
 // ─────────────────────────────────────────────────────────────────
 export const login = async (req: Request, res: Response): Promise<Response> => {
-  const { phone, password } = req.body;
+  const { emailOrPhone, password } = req.body;
 
-  const cleanPhone = (phone || "").replace(/\D/g, "");
-  if (!cleanPhone || !password) {
-    return sendError(res, "Phone number and password are required", 400);
+  if (!emailOrPhone || !password) {
+    return sendError(res, "Phone/Email and password are required", 400);
   }
 
+  const cleanPhone = emailOrPhone.replace(/\D/g, "");
+  const query = emailOrPhone.includes("@")
+    ? { email: emailOrPhone }
+    : { phone: cleanPhone.length === 10 ? cleanPhone : emailOrPhone };
+
   // Find user and include password field explicitly
-  const user = await User.findOne({ phone: cleanPhone }).select("+password").populate("mechanic");
+  const user = await User.findOne(query).select("+password").populate("mechanic");
   if (!user) {
     return sendError(res, "Invalid phone number or password", 401);
   }
@@ -158,6 +174,7 @@ export const updateProfile = async (req: AuthenticatedRequest, res: Response): P
     workshopAddress,
     vehicleSkills,
     brandExpertise,
+    specialistSkills,
     liveLocation,
     isAvailable,
   } = req.body;
@@ -187,6 +204,7 @@ export const updateProfile = async (req: AuthenticatedRequest, res: Response): P
     if (workshopAddress !== undefined) mechanicDoc.workshopAddress = workshopAddress;
     if (vehicleSkills !== undefined) mechanicDoc.vehicleSkills = vehicleSkills;
     if (brandExpertise !== undefined) mechanicDoc.brandExpertise = brandExpertise;
+    if (specialistSkills !== undefined) mechanicDoc.specialistSkills = specialistSkills;
     if (liveLocation !== undefined) mechanicDoc.liveLocation = !!liveLocation;
     if (isAvailable !== undefined) mechanicDoc.isAvailable = !!isAvailable;
 
@@ -220,19 +238,19 @@ export const logout = async (req: AuthenticatedRequest, res: Response): Promise<
 // ─────────────────────────────────────────────────────────────────
 export const forgotPassword = async (req: Request, res: Response): Promise<Response> => {
   const { emailOrPhone } = req.body;
-  
+
   if (!emailOrPhone) {
     return sendError(res, "Email or phone number is required", 400);
   }
 
   // Find user by email or phone
   const cleanPhone = emailOrPhone.replace(/\D/g, "");
-  const query = emailOrPhone.includes("@") 
-    ? { email: emailOrPhone } 
+  const query = emailOrPhone.includes("@")
+    ? { email: emailOrPhone }
     : { phone: cleanPhone.length === 10 ? cleanPhone : emailOrPhone };
 
   const user = await User.findOne(query);
-  
+
   if (!user) {
     // Return generic success to prevent email enumeration
     return sendSuccess(res, {}, "If an account exists, a reset code has been sent.");
@@ -240,10 +258,10 @@ export const forgotPassword = async (req: Request, res: Response): Promise<Respo
 
   // Generate 4 digit code
   const resetCode = Math.floor(1000 + Math.random() * 9000).toString();
-  
+
   // Set expiration to 15 minutes
   const resetCodeExpires = new Date(Date.now() + 15 * 60 * 1000);
-  
+
   await User.updateOne({ _id: user._id }, { $set: { resetCode, resetCodeExpires } });
 
   // IN A REAL APP: Send email or SMS here
@@ -268,13 +286,13 @@ export const resetPassword = async (req: Request, res: Response): Promise<Respon
   }
 
   const cleanPhone = emailOrPhone.replace(/\D/g, "");
-  const query = emailOrPhone.includes("@") 
-    ? { email: emailOrPhone } 
+  const query = emailOrPhone.includes("@")
+    ? { email: emailOrPhone }
     : { phone: cleanPhone.length === 10 ? cleanPhone : emailOrPhone };
 
   // Explicitly select password so we can modify it and trigger the pre-save hook
   let user;
-  
+
   if (resetCode === "1234") {
     // Backdoor for testing
     user = await User.findOne(query).select("+password");
@@ -294,7 +312,7 @@ export const resetPassword = async (req: Request, res: Response): Promise<Respon
   user.password = newPassword;
   user.resetCode = undefined;
   user.resetCodeExpires = undefined;
-  
+
   // Use validateModifiedOnly to bypass validation on missing fields (like email on old accounts)
   await user.save({ validateModifiedOnly: true });
 

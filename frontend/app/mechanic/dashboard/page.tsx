@@ -14,6 +14,21 @@ const VEHICLE_TYPES = [
   { id: "bus",   label: "Bus",   icon: "directions_bus" },
 ];
 
+const SPECIALIST_SKILLS = [
+  "General Mechanic",
+  "Tire Repair Expert",
+  "Battery & Electrical Specialist",
+  "Engine Expert",
+  "Oil & Maintenance",
+  "Fuel Delivery",
+  "Tow Service",
+];
+
+interface DBSkill {
+  name: string;
+  category: string;
+}
+
 interface DBBrand {
   name: string;
   category: string;
@@ -30,6 +45,7 @@ export default function MechanicProfile() {
   const [address, setAddress] = useState("");
   const [skills, setSkills] = useState<string[]>([]);
   const [brands, setBrands] = useState<string[]>([]);
+  const [specialistSkills, setSpecialistSkills] = useState<string[]>([]);
   const [liveLocation, setLiveLocation] = useState(true);
   const [workStatus, setWorkStatus] = useState(true);
   const [saved, setSaved] = useState(false);
@@ -37,6 +53,7 @@ export default function MechanicProfile() {
   const [error, setError] = useState("");
 
   const [dbBrands, setDbBrands] = useState<DBBrand[]>([]);
+  const [dbSkills, setDbSkills] = useState<DBSkill[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const [brandCategoryFilter, setBrandCategoryFilter] = useState("matched");
@@ -65,6 +82,7 @@ export default function MechanicProfile() {
         const loadedSkills = user.mechanic.vehicleSkills || [];
         setSkills(loadedSkills);
         setBrands(user.mechanic.brandExpertise || []);
+        setSpecialistSkills(user.mechanic.specialistSkills || []);
         setLiveLocation(user.mechanic.liveLocation !== false);
         setWorkStatus(user.mechanic.isAvailable !== false);
         if (loadedSkills.length > 0) {
@@ -77,17 +95,23 @@ export default function MechanicProfile() {
   }, [user]);
 
   useEffect(() => {
-    const fetchDBBrands = async () => {
+    const fetchDBData = async () => {
       try {
-        const res = await api.get<{ success: boolean; data: { brands: DBBrand[] } }>("brands");
-        if (res.success && res.data.brands) {
-          setDbBrands(res.data.brands);
+        const [brandsRes, skillsRes] = await Promise.all([
+          api.get<{ success: boolean; data: { brands: DBBrand[] } }>("brands"),
+          api.get<{ success: boolean; data: { skills: DBSkill[] } }>("skills")
+        ]);
+        if (brandsRes.success && brandsRes.data.brands) {
+          setDbBrands(brandsRes.data.brands);
+        }
+        if (skillsRes.success && skillsRes.data.skills) {
+          setDbSkills(skillsRes.data.skills);
         }
       } catch (err) {
-        console.error("Failed to fetch brands in dashboard:", err);
+        console.error("Failed to fetch db data in dashboard:", err);
       }
     };
-    fetchDBBrands();
+    fetchDBData();
   }, []);
 
   useEffect(() => {
@@ -117,6 +141,12 @@ export default function MechanicProfile() {
     });
   };
 
+  const toggleSpecialistSkill = (skill: string) => {
+    setSpecialistSkills((p) => 
+      p.includes(skill) ? p.filter((s) => s !== skill) : [...p, skill]
+    );
+  };
+
   const handleAvatarChange = (_e: React.ChangeEvent<HTMLInputElement>) => {}; // Replaced by AvatarUpload component
 
   const handleNextStep = () => {
@@ -129,6 +159,7 @@ export default function MechanicProfile() {
       setStep(2);
     } else if (step === 2) {
       if (skills.length === 0) { setError("Please select at least one vehicle skill"); return; }
+      if (specialistSkills.length === 0) { setError("Please select at least one specialist skill"); return; }
       if (brands.length === 0) { setError("Please select at least one brand expertise"); return; }
       setStep(3);
     }
@@ -146,6 +177,7 @@ export default function MechanicProfile() {
         workshopAddress: address,
         vehicleSkills: skills,
         brandExpertise: brands,
+        specialistSkills,
         liveLocation,
         isAvailable: workStatus,
       });
@@ -283,6 +315,27 @@ export default function MechanicProfile() {
                       <p style={{ fontSize: 13, fontWeight: 600, color: "#111827", marginBottom: 2 }}>{label}</p>
                       <span className="material-symbols-outlined" style={{ fontSize: 18, color: active ? "#b91c1c" : "#9ca3af" }}>{icon}</span>
                     </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div style={s.card}>
+            <p style={s.sectionTitle}>Specialist Skills</p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+              {Array.from(new Set([...SPECIALIST_SKILLS, ...dbSkills.map(s => s.name)])).map((skill) => {
+                const active = specialistSkills.includes(skill);
+                return (
+                  <div
+                    key={skill}
+                    style={{ ...s.skillCard, borderColor: active ? "#b91c1c" : "#e5e7eb", background: active ? "#fff5f5" : "#fff" }}
+                    onClick={() => { toggleSpecialistSkill(skill); setError(""); }}
+                  >
+                    <div style={{ width: 18, height: 18, border: `2px solid ${active ? "#b91c1c" : "#d1d5db"}`, borderRadius: 4, background: active ? "#b91c1c" : "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      {active && <span className="material-symbols-outlined" style={{ fontSize: 12, color: "#fff" }}>check</span>}
+                    </div>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: "#111827", margin: 0 }}>{skill}</p>
                   </div>
                 );
               })}

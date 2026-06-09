@@ -5,6 +5,7 @@ export interface IMechanic extends Document {
   workshopAddress: string;
   vehicleSkills: string[];
   brandExpertise: string[];
+  specialistSkills: string[];
   isAvailable: boolean;
   liveLocation: boolean;
   rating: number;
@@ -20,6 +21,7 @@ const mechanicSchema = new Schema<IMechanic>(
     workshopAddress: { type: String, default: "" },
     vehicleSkills: { type: [String], default: [] },
     brandExpertise: { type: [String], default: [] },
+    specialistSkills: { type: [String], default: [] },
     isAvailable: { type: Boolean, default: false },
     liveLocation: { type: Boolean, default: true },
     rating: { type: Number, default: 0 },

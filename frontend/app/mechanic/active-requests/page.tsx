@@ -85,15 +85,19 @@ export default function ActiveRequestsPage() {
                 </div>
 
                 <div style={{ display: "flex", gap: 10 }}>
-                  <button 
-                    onClick={() => router.push(`/live-tracking/${req._id}?role=mechanic`)}
+                  <button
+                    onClick={() => {
+                      localStorage.setItem("activeRequestId", req._id);
+                      localStorage.setItem("activeRole", "mechanic");
+                      router.push(`/live-tracking`);
+                    }}
                     style={{ flex: 1, background: "#111827", color: "#fff", border: "none", borderRadius: 8, padding: "12px 0", fontSize: 13, fontWeight: 700, cursor: "pointer", transition: "background 0.15s" }}
                     onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "#374151"; }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "#111827"; }}
                   >
                     TRACK & ASSIST
                   </button>
-                  <button 
+                  <button
                     onClick={() => router.push(`/mechanic/billing/${req._id}`)}
                     style={{ flex: 1, background: "#f0fdf4", color: "#16a34a", border: "1px solid #bbf7d0", borderRadius: 8, padding: "12px 0", fontSize: 13, fontWeight: 700, cursor: "pointer", transition: "background 0.15s" }}
                     onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "#dcfce7"; }}

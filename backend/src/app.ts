@@ -6,6 +6,7 @@ import "express-async-errors"; // auto-catches async errors → passes to errorH
 
 import authRoutes from "./routes/auth.routes";
 import brandRoutes from "./routes/brand.routes";
+import skillRoutes from "./routes/skill.routes";
 import mechanicRoutes from "./routes/mechanic.routes";
 import requestRoutes from "./routes/requests.routes";
 import uploadRoutes from "./routes/upload.routes";
@@ -38,6 +39,7 @@ app.get("/api/health", (_req: Request, res: Response) => {
 // ─── Routes ──────────────────────────────────────────────────────
 app.use("/api/auth",     authRoutes);
 app.use("/api/brands",   brandRoutes);
+app.use("/api/skills",   skillRoutes);
 app.use("/api/mechanic", mechanicRoutes);
 app.use("/api/requests", requestRoutes);
 app.use("/api/upload",   uploadRoutes);

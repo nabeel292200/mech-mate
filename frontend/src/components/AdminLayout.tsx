@@ -17,6 +17,7 @@ export default function AdminLayout({ children, activeTab }: { children: React.R
     { label: "History", icon: "history", route: "/admin/history" },
     { label: "Payments", icon: "payments", route: "/admin/payments" },
     { label: "Brands", icon: "directions_car", route: "/admin/brands" },
+    { label: "Skills", icon: "handyman", route: "/admin/skills" },
     { label: "Settings", icon: "settings", route: "/admin/settings" },
     { label: "Help Center", icon: "help", route: "/admin/help-center" },
   ];
@@ -45,10 +46,12 @@ export default function AdminLayout({ children, activeTab }: { children: React.R
             MECH-MATE
           </h1>
         </div>
-        
+
         {/* User Profile */}
         <div style={{ padding: "10px 20px 24px 20px", display: "flex", alignItems: "center", gap: 12 }}>
-          <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Admin" style={{ width: 44, height: 44, borderRadius: "50%", objectFit: "cover" }} />
+          <div style={{ width: 44, height: 44, borderRadius: "50%", backgroundColor: "#fca5a5", display: "flex", alignItems: "center", justifyContent: "center", color: "#b91c1c", flexShrink: 0 }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 24 }}>admin_panel_settings</span>
+          </div>
           <div>
             <h2 style={{ fontSize: 15, fontWeight: 700, color: "#111827", margin: 0 }}>System Admin</h2>
             <p style={{ fontSize: 12, color: "#6b7280", margin: "2px 0 6px 0" }}>Administrator</p>
@@ -64,23 +67,23 @@ export default function AdminLayout({ children, activeTab }: { children: React.R
           {menuItems.map((item) => {
             const isActive = activeTab === item.label;
             return (
-              <div 
+              <div
                 key={item.label}
                 onClick={() => router.push(item.route)}
-                style={{ 
-                  display: "flex", 
-                  alignItems: "center", 
-                  gap: 12, 
-                  padding: "14px 24px", 
-                  backgroundColor: isActive ? "#fca5a5" : "transparent", 
-                  color: isActive ? "#7f1d1d" : "#4b5563", 
-                  fontWeight: isActive ? 700 : 600, 
-                  fontSize: 14, 
-                  cursor: "pointer", 
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: "14px 24px",
+                  backgroundColor: isActive ? "#fca5a5" : "transparent",
+                  color: isActive ? "#7f1d1d" : "#4b5563",
+                  fontWeight: isActive ? 700 : 600,
+                  fontSize: 14,
+                  cursor: "pointer",
                   borderRight: isActive ? "4px solid #b91c1c" : "4px solid transparent",
-                  transition: "background-color 0.2s" 
-                }} 
-                onMouseEnter={e => { if (!isActive) e.currentTarget.style.backgroundColor = "#f3f4f6"; }} 
+                  transition: "background-color 0.2s"
+                }}
+                onMouseEnter={e => { if (!isActive) e.currentTarget.style.backgroundColor = "#f3f4f6"; }}
                 onMouseLeave={e => { if (!isActive) e.currentTarget.style.backgroundColor = "transparent"; }}
               >
                 <span className="material-symbols-outlined" style={{ fontSize: 20 }}>{item.icon}</span>

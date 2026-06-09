@@ -48,7 +48,9 @@ export default function DashboardPage() {
 
     const handleRequestAccepted = (updatedReq: any) => {
       if (pendingRequestId && updatedReq._id === pendingRequestId) {
-        router.push(`/live-tracking/${updatedReq._id}?role=user`);
+        localStorage.setItem("activeRequestId", updatedReq._id);
+        localStorage.setItem("activeRole", "user");
+        router.push(`/live-tracking`);
       }
     };
 
@@ -96,9 +98,17 @@ export default function DashboardPage() {
     const socket = getSocket();
     const finalLocation = userLocation || { lat: 10.8505, lng: 76.2711 };
 
+    const SKILL_MAP: Record<string, string> = {
+      "flat_tire": "Tire Repair Expert",
+      "fuel": "Fuel Delivery",
+      "mechanical": "General Mechanic",
+      "tow": "Tow Service"
+    };
+
     socket.emit("create_request", {
       userId: actualUserId,
       brandName: brandName,
+      specialistSkill: SKILL_MAP[selectedService],
       problemDetails: `${selectedService} - ${description}`,
       userLocation: finalLocation,
     });

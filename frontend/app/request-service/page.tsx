@@ -5,12 +5,23 @@ import { useRouter } from "next/navigation";
 import { getSocket } from "@/src/services/socket";
 import { useAuthStore } from "@/src/store/authStore";
 
-const BRANDS = ["Toyota", "Honda", "BMW", "Audi", "Ford", "Chevrolet", "Bajaj", "Hero", "Yamaha", "KTM", "Royal Enfield", "Ducati", "Aprilia"];
+const BRANDS = ["Toyota", "Honda", "BMW", "Audi", "Ford", "Chevrolet", "Bajaj", "Hero", "Yamaha", "KTM", "Royal Enfield", "Ducati", "Aprilia", "BYD"];
+
+const SPECIALIST_SKILLS = [
+  "General Mechanic",
+  "Tire Repair Expert",
+  "Battery & Electrical Specialist",
+  "Engine Expert",
+  "Oil & Maintenance",
+  "Fuel Delivery",
+  "Tow Service",
+];
 
 export default function RequestServicePage() {
   const router = useRouter();
   const { user } = useAuthStore();
   const [brand, setBrand] = useState("");
+  const [specialistSkill, setSpecialistSkill] = useState("");
   const [problem, setProblem] = useState("");
   const [status, setStatus] = useState<"idle" | "locating" | "waiting" | "accepted">("idle");
   const [error, setError] = useState("");
@@ -28,7 +39,9 @@ export default function RequestServicePage() {
     socket.on("request_accepted", (data: any) => {
       setStatus("accepted");
       setTimeout(() => {
-        router.push(`/live-tracking/${data._id}?role=user`);
+        localStorage.setItem("activeRequestId", data._id);
+        localStorage.setItem("activeRole", "user");
+        router.push(`/live-tracking`);
       }, 1500);
     });
 
@@ -46,8 +59,8 @@ export default function RequestServicePage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!brand || !problem) {
-      setError("Please select a brand and describe the problem.");
+    if (!brand || !specialistSkill || !problem) {
+      setError("Please select a brand, required skill, and describe the problem.");
       return;
     }
 
@@ -74,6 +87,7 @@ export default function RequestServicePage() {
           socket.emit("create_request", {
             userId: actualUserId,
             brandName: brand,
+            specialistSkill,
             problemDetails: problem,
             userLocation,
           });
@@ -106,6 +120,20 @@ export default function RequestServicePage() {
                 <option value="">Select your brand...</option>
                 {BRANDS.map(b => (
                   <option key={b} value={b}>{b}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Required Specialist Skill</label>
+              <select
+                value={specialistSkill}
+                onChange={(e) => setSpecialistSkill(e.target.value)}
+                className="w-full border border-slate-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select the type of expert...</option>
+                {SPECIALIST_SKILLS.map(skill => (
+                  <option key={skill} value={skill}>{skill}</option>
                 ))}
               </select>
             </div>
@@ -146,7 +174,7 @@ export default function RequestServicePage() {
               <div className="relative w-10 h-10 bg-blue-600 rounded-full"></div>
             </div>
             <h2 className="text-xl font-semibold text-slate-800">Broadcasting Request</h2>
-            <p className="text-slate-600">Alerted {notifiedCount} {brand} expert(s) nearby...</p>
+            <p className="text-slate-600">Alerted {notifiedCount} {specialistSkill} expert(s) nearby...</p>
           </div>
         )}
 
@@ -159,25 +187,5 @@ export default function RequestServicePage() {
         )}
       </div>
     </div>
-  );
-}
-<div className="relative w-10 h-10 bg-blue-600 rounded-full"></div>
-            </div >
-            <h2 className="text-xl font-semibold text-slate-800">Broadcasting Request</h2>
-            <p className="text-slate-600">Alerted {notifiedCount} {brand} expert(s) nearby...</p>
-          </div >
-        )}
-
-{
-  status === "accepted" && (
-    <div className="text-center py-10 space-y-4">
-      <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto text-3xl">✓</div>
-      <h2 className="text-xl font-semibold text-green-700">Mechanic on the way!</h2>
-      <p className="text-slate-600">Connecting to live GPS map...</p>
-    </div>
-  )
-}
-      </div >
-    </div >
   );
 }
