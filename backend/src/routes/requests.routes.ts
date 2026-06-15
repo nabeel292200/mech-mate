@@ -15,13 +15,13 @@ router.get("/:id", async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: "Request not found" });
     }
 
-    let mechanicUser = null;
+    let mechanicUser: any = null;
     if (request.mechanicId) {
-      mechanicUser = await User.findOne({ mechanic: request.mechanicId._id }).select("name avatar");
+      mechanicUser = await User.findOne({ mechanic: (request.mechanicId as any)._id }).select("name avatar");
     }
 
     // Attach mechanic user data if available
-    const responseData = request.toObject();
+    const responseData: any = request.toObject();
     if (mechanicUser) {
       responseData.mechanicUser = mechanicUser;
     }

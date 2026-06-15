@@ -6,6 +6,8 @@ export interface IUser {
   name: string;
   role: "user" | "admin" | "mechanic";
   isProfileComplete: boolean;
+  avatar?: string;
+  approvalStatus?: string;
   mechanic?: {
     _id?: string;
     id?: string;
@@ -18,6 +20,7 @@ export interface IUser {
     liveLocation: boolean;
     rating: number;
     totalJobs: number;
+    idProofUrl?: string;
   };
 }
 

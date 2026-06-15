@@ -152,6 +152,7 @@ export default function MechanicProfile() {
   const handleNextStep = () => {
     setError("");
     if (step === 1) {
+      if (!idProofUrl && !user?.mechanic?.idProofUrl) { setError("ID Proof is required. Please upload your Aadhaar / License / Passport."); return; }
       if (!name.trim()) { setError("Full Name is required"); return; }
       if (phone.replace(/\D/g, "").length !== 10) { setError("A valid 10-digit phone number is required"); return; }
       if (!experience.trim() || Number(experience) < 0) { setError("Experience is required and must be 0 or more years"); return; }

@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from "react";
 import AdminLayout from "../../../src/components/AdminLayout";
 import { api } from "../../../src/services/api.service";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 export default function AdminMechanicsPage() {
   const [mechanics, setMechanics] = useState<any[]>([]);
@@ -48,6 +50,32 @@ export default function AdminMechanicsPage() {
     }
   };
 
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    doc.text("Mechanic List Report", 14, 15);
+    const tableColumn = ["Name", "Phone", "Experience", "Specialization", "Approval", "Status"];
+    const tableRows: any[] = [];
+
+    mechanics.forEach((row) => {
+      const rowData = [
+        row.name || "N/A",
+        row.phone || "N/A",
+        row.experience || "N/A",
+        row.specialization || "N/A",
+        (row.approvalStatus || "approved").toUpperCase(),
+        row.isActive ? "ACTIVE" : "BLOCKED",
+      ];
+      tableRows.push(rowData);
+    });
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 20,
+    });
+    doc.save(`mechanics_report_${new Date().getTime()}.pdf`);
+  };
+
   if (loading) {
     return (
       <AdminLayout activeTab="Mechanics">
@@ -60,9 +88,15 @@ export default function AdminMechanicsPage() {
 
   return (
     <AdminLayout activeTab="Mechanics">
-      <div style={{ marginBottom: 32 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 800, color: "#111827", margin: "0 0 8px 0" }}>Mechanic Control</h1>
-        <p style={{ fontSize: 14, color: "#6b7280", margin: 0 }}>View, accept, reject, block, or unblock mechanics.</p>
+      <div style={{ marginBottom: 32, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div>
+          <h1 style={{ fontSize: 28, fontWeight: 800, color: "#111827", margin: "0 0 8px 0" }}>Mechanic Control</h1>
+          <p style={{ fontSize: 14, color: "#6b7280", margin: 0 }}>View, accept, reject, block, or unblock mechanics.</p>
+        </div>
+        <button onClick={handleExportPDF} style={{ padding: "10px 16px", background: "#b91c1c", color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}>
+          <span className="material-symbols-outlined" style={{ fontSize: 20 }}>picture_as_pdf</span>
+          Export PDF
+        </button>
       </div>
 
       <div style={{ backgroundColor: "#ffffff", borderRadius: 16, padding: 24, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>

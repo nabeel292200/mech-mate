@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from "react";
 import AdminLayout from "../../../src/components/AdminLayout";
 import { api } from "../../../src/services/api.service";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 export default function AdminHistoryPage() {
   const [historyData, setHistoryData] = useState<any[]>([]);
@@ -27,6 +29,32 @@ export default function AdminHistoryPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    doc.text("Service History Report", 14, 15);
+    const tableColumn = ["Request ID", "Date", "User", "Mechanic", "Status", "Amount"];
+    const tableRows: any[] = [];
+
+    historyData.forEach((row) => {
+      const rowData = [
+        row.id || "N/A",
+        row.date || "N/A",
+        row.user || "N/A",
+        row.mechanic || "N/A",
+        row.status || "N/A",
+        row.amount || "N/A",
+      ];
+      tableRows.push(rowData);
+    });
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 20,
+    });
+    doc.save(`service_history_${new Date().getTime()}.pdf`);
   };
 
   if (loading && page === 1) {
@@ -56,7 +84,13 @@ export default function AdminHistoryPage() {
               <option>Cancelled</option>
             </select>
           </div>
-          <button style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid #e5e7eb", backgroundColor: "#fff", fontSize: 13, fontWeight: 600, color: "#4b5563", cursor: "pointer" }}>Export CSV</button>
+          <div style={{ display: "flex", gap: 12 }}>
+            <button style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid #e5e7eb", backgroundColor: "#fff", fontSize: 13, fontWeight: 600, color: "#4b5563", cursor: "pointer" }}>Export CSV</button>
+            <button onClick={handleExportPDF} style={{ padding: "8px 16px", background: "#b91c1c", color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>picture_as_pdf</span>
+              Export PDF
+            </button>
+          </div>
         </div>
 
         <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>

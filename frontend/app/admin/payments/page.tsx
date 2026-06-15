@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from "react";
 import AdminLayout from "../../../src/components/AdminLayout";
 import { api } from "../../../src/services/api.service";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 export default function AdminPaymentsPage() {
   const [data, setData] = useState<{
@@ -42,11 +44,42 @@ export default function AdminPaymentsPage() {
 
   const { totalRevenue = 0, pendingPayouts = 0, platformFees = 0, recentTransactions = [] } = data || {};
 
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    doc.text("Payments & Transactions Report", 14, 15);
+    const tableColumn = ["Transaction ID", "Date", "Mechanic", "Amount", "Status"];
+    const tableRows: any[] = [];
+
+    recentTransactions.forEach((tx: any) => {
+      const txData = [
+        tx.id || "N/A",
+        tx.date || "N/A",
+        tx.mechanic || "N/A",
+        tx.amount || "N/A",
+        tx.paymentStatus || "N/A",
+      ];
+      tableRows.push(txData);
+    });
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 20,
+    });
+    doc.save(`payments_report_${new Date().getTime()}.pdf`);
+  };
+
   return (
     <AdminLayout activeTab="Payments">
-      <div style={{ marginBottom: 32 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 800, color: "#111827", margin: "0 0 8px 0" }}>Financial Overview</h1>
-        <p style={{ fontSize: 14, color: "#6b7280", margin: 0 }}>Track revenue, payouts, and subscription plans.</p>
+      <div style={{ marginBottom: 32, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div>
+          <h1 style={{ fontSize: 28, fontWeight: 800, color: "#111827", margin: "0 0 8px 0" }}>Financial Overview</h1>
+          <p style={{ fontSize: 14, color: "#6b7280", margin: 0 }}>Track revenue, payouts, and subscription plans.</p>
+        </div>
+        <button onClick={handleExportPDF} style={{ padding: "10px 16px", background: "#b91c1c", color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}>
+          <span className="material-symbols-outlined" style={{ fontSize: 20 }}>picture_as_pdf</span>
+          Export PDF
+        </button>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24, marginBottom: 32 }}>

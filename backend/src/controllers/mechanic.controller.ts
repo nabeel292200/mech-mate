@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { AuthenticatedRequest } from "../middleware/auth.middleware";
 import ServiceRequest from "../models/ServiceRequest.model";
 import Mechanic from "../models/Mechanic.model";
 import User from "../models/User.model";
@@ -52,7 +53,7 @@ export const getPendingRequests = async (req: Request, res: Response) => {
 };
 
 // Get active requests (accepted but not completed/cancelled)
-export const getActiveRequests = async (req: Request, res: Response) => {
+export const getActiveRequests = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const mechData: any = req.user?.mechanic;
     const mechanicId = mechData?._id || mechData;
@@ -74,7 +75,7 @@ export const getActiveRequests = async (req: Request, res: Response) => {
 };
 
 // Get a specific request by ID
-export const getRequestById = async (req: Request, res: Response) => {
+export const getRequestById = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const mechData: any = req.user?.mechanic;
     const mechanicId = mechData?._id || mechData;
@@ -98,7 +99,7 @@ export const getRequestById = async (req: Request, res: Response) => {
 };
 
 // Send invoice and update request status
-export const sendInvoice = async (req: Request, res: Response) => {
+export const sendInvoice = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const mechData: any = req.user?.mechanic;
     const mechanicId = mechData?._id || mechData;
@@ -129,7 +130,7 @@ export const sendInvoice = async (req: Request, res: Response) => {
 };
 
 // Get completed jobs
-export const getCompletedJobs = async (req: Request, res: Response) => {
+export const getCompletedJobs = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const mechData: any = req.user?.mechanic;
     const mechanicId = mechData?._id || mechData;
@@ -151,7 +152,7 @@ export const getCompletedJobs = async (req: Request, res: Response) => {
 };
 
 // Get earnings analytics
-export const getEarnings = async (req: Request, res: Response) => {
+export const getEarnings = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const mechData: any = req.user?.mechanic;
     const mechanicId = mechData?._id || mechData;
@@ -173,7 +174,7 @@ export const getEarnings = async (req: Request, res: Response) => {
     requests.forEach(req => {
       const amount = req.totalAmount || 0;
       totalEarnings += amount;
-      if (req.createdAt && new Date(req.createdAt) > oneWeekAgo) {
+      if ((req as any).createdAt && new Date((req as any).createdAt) > oneWeekAgo) {
         thisWeekEarnings += amount;
       }
     });
@@ -187,7 +188,7 @@ export const getEarnings = async (req: Request, res: Response) => {
         recentTransactions: requests.slice(0, 10).map(r => ({
           id: r._id,
           amount: r.totalAmount || 0,
-          date: r.createdAt,
+          date: (r as any).createdAt,
           brandName: r.brandName
         }))
       }
@@ -198,7 +199,7 @@ export const getEarnings = async (req: Request, res: Response) => {
 };
 
 // Update profile
-export const updateProfile = async (req: Request, res: Response) => {
+export const updateProfile = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user?._id;
     const mechanicId = req.user?.mechanic;

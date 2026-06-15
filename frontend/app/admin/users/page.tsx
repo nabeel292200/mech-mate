@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from "react";
 import AdminLayout from "../../../src/components/AdminLayout";
 import { api } from "../../../src/services/api.service";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<any[]>([]);
@@ -46,6 +48,30 @@ export default function AdminUsersPage() {
     }
   };
 
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    doc.text("User Management Report", 14, 15);
+    const tableColumn = ["Name", "Phone", "Joined", "Status"];
+    const tableRows: any[] = [];
+
+    users.forEach((user) => {
+      const userData = [
+        user.name || "N/A",
+        user.phone || "N/A",
+        new Date(user.joined).toLocaleDateString(),
+        user.isActive ? "ACTIVE" : "BLOCKED",
+      ];
+      tableRows.push(userData);
+    });
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 20,
+    });
+    doc.save(`users_report_${new Date().getTime()}.pdf`);
+  };
+
   if (loading) {
     return (
       <AdminLayout activeTab="Users">
@@ -58,9 +84,15 @@ export default function AdminUsersPage() {
 
   return (
     <AdminLayout activeTab="Users">
-      <div style={{ marginBottom: 32 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 800, color: "#111827", margin: "0 0 8px 0" }}>User Management</h1>
-        <p style={{ fontSize: 14, color: "#6b7280", margin: 0 }}>View registered users and manage their account status.</p>
+      <div style={{ marginBottom: 32, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div>
+          <h1 style={{ fontSize: 28, fontWeight: 800, color: "#111827", margin: "0 0 8px 0" }}>User Management</h1>
+          <p style={{ fontSize: 14, color: "#6b7280", margin: 0 }}>View registered users and manage their account status.</p>
+        </div>
+        <button onClick={handleExportPDF} style={{ padding: "10px 16px", background: "#b91c1c", color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}>
+          <span className="material-symbols-outlined" style={{ fontSize: 20 }}>picture_as_pdf</span>
+          Export PDF
+        </button>
       </div>
 
       <div style={{ backgroundColor: "#ffffff", borderRadius: 16, padding: 24, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>

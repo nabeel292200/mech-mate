@@ -62,7 +62,7 @@ export const register = async (req: Request, res: Response): Promise<Response> =
   const user = await User.create(userPayload);
 
   // Issue JWT
-  const token = signToken({ id: user._id, phone: user.phone, role: user.role });
+  const token = signToken({ id: String(user._id), phone: user.phone as string, role: user.role });
 
   console.log(`[AUTH]  REGISTER  phone=${cleanPhone}  role=${user.role}`);
 
@@ -128,7 +128,7 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
   }
 
   // Issue JWT
-  const token = signToken({ id: user._id, phone: user.phone, role: user.role });
+  const token = signToken({ id: String(user._id), phone: user.phone as string, role: user.role });
 
   console.log(`[AUTH]  LOGIN  phone=${cleanPhone}  role=${user.role}`);
 
